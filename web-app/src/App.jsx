@@ -53,12 +53,26 @@ const App = () => {
     } catch (err) { setError(err.message); } finally { setIsLoading(false); }
   };
 
+  const hashPassword = async (string) => {
+    const utf8 = new TextEncoder().encode(string);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
+
   const handleStaffLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
-      const { data: userData, error: uError } = await supabase.from('users').select('*').eq('username', username).eq('password', password).single();
+      const hashedPassword = await hashPassword(password);
+      const { data: userData, error: uError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .eq('password', hashedPassword)
+        .single();
+
       if (uError || !userData) throw new Error('Invalid Credentials. Please probe again.');
       setActiveUser(userData);
       localStorage.setItem('mediccon_staff', JSON.stringify(userData));
