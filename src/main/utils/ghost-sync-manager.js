@@ -11,12 +11,14 @@ class GhostSyncManager {
 
         // Define which tables to shadow-sync to the cloud
         this.syncTables = [
+            'users',
             'patients',
             'invoices',
             'results',
             'inventory',
             'procurement_orders',
-            'machines'
+            'machines',
+            'test_catalog'
         ];
     }
 
