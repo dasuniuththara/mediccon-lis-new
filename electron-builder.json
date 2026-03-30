@@ -1,0 +1,16 @@
+{
+    "appId": "com.mediccon.lis",
+    "productName": "MedicconLIS",
+    "directories": {
+        "output": "dist",
+        "buildResources": "build"
+    },
+    "files": [
+        "dist/**/*",
+        "src/main/**/*",
+        "package.json"
+    ],
+    "win": {
+        "target": "nsis"
+    }
+}

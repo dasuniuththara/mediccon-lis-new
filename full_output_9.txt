@@ -1,0 +1,121 @@
+
+> mediccon-lis@1.0.0 start
+> cmd /C "set ELECTRON_RUN_AS_NODE=&& electron ."
+
+
+[DEBUG] Starting Main Process
+[DB] Core Tables Initialized
+[Licensing] Authorized PC: 2HNWYJ3
+[DB Migration] Standard pricing already initialized. Skipping forced update.
+[Security] Auto-Authorized Selectra and Mispa for user account
+[DEBUG] Database Loaded
+[DEBUG] App Ready
+[System] All machine statuses reset to Offline
+[DEBUG] Setting up IPC...
+[Bidirectional] Database initialized
+[Bidirectional] Loaded test mappings: 118
+[Auto-Seed] System healthy. Found 46 total mapped tests.
+[DEBUG] Registering get-machine-logs handler
+[DEBUG] IPC Ready
+[DEBUG] Creating Window...
+[DEBUG] Loading: C:\Users\Dasuni Work\OneDrive\Desktop\mediccon-lis\src\renderer\index.html
+[MachineConfig] Initializing all machine connections...
+[Gatekeeper] Plan: PROFESSIONAL | Limit: 5 | Status: ACTIVE
+[RENDERER] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+[RENDERER] RENDERER_BOOT: Initializing...
+[RENDERER] [Renderer] index.js entry point
+[RENDERER] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+You might need to use a local HTTP server (instead of file://): https://reactjs.org/link/react-devtools-faq font-weight:bold
+[RENDERER] [Renderer] App rendered
+[RENDERER] RENDERER_BOOT: Application Loaded
+[DEBUG] Success: Index Loaded
+[RENDERER] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+  this app to unnecessary security risks.
+
+For more information and help, consult
+https://electronjs.org/docs/tutorial/security.
+This warning will not show up
+once the app is packaged.
+[IPC] Call: get-system-settings
+[IPC] Call: get-system-settings
+[IPC] Call: login
+[IPC] Call: login
+[IPC] Call: login
+[IPC] Call: login
+[IPC] Call: login
+[IPC] Call: login
+[IPC] Call: get-machines
+[IPC] Call: get-quick-stats
+[IPC] Call: get-latest-activity
+[IPC] Call: get-referring-doctors
+[IPC] Call: get-test-catalog
+[IPC] Call: get-test-catalog
+[IPC] Call: get-patients
+[IPC] Call: get-referring-doctors
+[IPC] Call: get-referring-doctors
+[IPC] Call: get-all-invoices
+[IPC] Call: get-inventory
+[IPC] Call: get-inventory-logs
+[IPC] Call: get-pending-results
+[IPC] Call: get-machines
+[IPC] Call: get-quick-stats
+[IPC] Call: get-latest-activity
+[IPC] Call: get-referring-doctors
+[IPC] Call: get-test-catalog
+[IPC] Call: get-test-catalog
+[IPC] Call: get-patients
+[IPC] Call: get-referring-doctors
+[IPC] Call: get-patient-tests
+[IPC] Call: get-patient-results
+[IPC] Call: get-pending-results
+[IPC] Call: simulate-mispa-result
+[SIMULATION] Triggering mock Mispa results for 200062500125
+[SIMULATION] Calling MachineConfigManager.handleMispaData
+[MachineConfig] Mispa Data from Mispa Simulation Node: {
+  patient: { id: '200062500125' },
+  tests: [
+    { name: 'WBC', value: 7.2, unit: 'x 10³/uL' },
+    { name: 'RBC', value: 4.85, unit: 'x 10⁶/uL' },
+    { name: 'HGB', value: 14.1, unit: 'g/dL' },
+    { name: 'PLT', value: 245, unit: 'x 10³/uL' }
+  ]
+}
+[Inventory] No reagents mapped for test: WBC (WBC)
+[Inventory] No reagents mapped for test: WBC (WBC)
+[Inventory] No reagents mapped for test: RBC (RBC)
+[Inventory] No reagents mapped for test: RBC (RBC)
+[Inventory] No reagents mapped for test: HGB (HGB)
+[Inventory] No reagents mapped for test: HGB (HGB)
+[Inventory] No reagents mapped for test: PLT (PLT)
+[Inventory] No reagents mapped for test: PLT (PLT)
+[IPC] Call: get-patient-results
+[IPC] Call: get-patient-results
+[RENDERER] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+[RENDERER] RENDERER_BOOT: Initializing...
+[RENDERER] [Renderer] index.js entry point
+[RENDERER] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+You might need to use a local HTTP server (instead of file://): https://reactjs.org/link/react-devtools-faq font-weight:bold
+[RENDERER] [Renderer] App rendered
+[RENDERER] RENDERER_BOOT: Application Loaded
+[RENDERER] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security
+  Policy set or a policy with "unsafe-eval" enabled. This exposes users of
+  this app to unnecessary security risks.
+
+For more information and help, consult
+https://electronjs.org/docs/tutorial/security.
+This warning will not show up
+once the app is packaged.
+[IPC] Call: get-system-settings
+[IPC] Call: get-system-settings
+[IPC] Call: login
+[IPC] Call: get-machines
+[IPC] Call: get-quick-stats
+[IPC] Call: get-latest-activity
+[IPC] Call: get-referring-doctors
+[IPC] Call: get-test-catalog
+[IPC] Call: get-test-catalog
+[IPC] Call: get-patients
+[IPC] Call: get-referring-doctors
+[IPC] Call: get-patient-results
+[IPC] Call: get-pending-results

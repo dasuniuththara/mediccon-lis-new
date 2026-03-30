@@ -1,0 +1,26 @@
+
+> mediccon-lis@1.0.0 start
+> electron .
+
+[DEBUG] Electron check: string C:\Users\Dasuni Work\OneDrive\Desktop\mediccon-lis\node_modules\electron\dist\electron.exe
+[DEBUG] Starting Main Process
+[DB] Core Tables Initialized
+[Licensing] Authorized PC: 2HNWYJ3
+[DB Migration] Standard pricing already initialized. Skipping forced update.
+[Security] Auto-Authorized Selectra and Mispa for user account
+[DEBUG] Database Loaded
+C:\Users\Dasuni Work\OneDrive\Desktop\mediccon-lis\src\main\main.js:477
+app.whenReady().then(() => {
+    ^
+
+TypeError: Cannot read properties of undefined (reading 'whenReady')
+    at Object.<anonymous> (C:\Users\Dasuni Work\OneDrive\Desktop\mediccon-lis\src\main\main.js:477:5)
+    at Module._compile (node:internal/modules/cjs/loader:1484:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1564:10)
+    at Module.load (node:internal/modules/cjs/loader:1295:32)
+    at Module._load (node:internal/modules/cjs/loader:1111:12)
+    at c._load (node:electron/js2c/node_init:2:16955)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:189:12)
+    at node:internal/main/run_main_module:28:49
+
+Node.js v20.18.0

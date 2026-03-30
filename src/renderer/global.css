@@ -1,0 +1,245 @@
+/* --- MEDICCON LIS - PREMIUM CLINICAL DESIGN SYSTEM --- */
+
+:root {
+    --brand-teal: #0d9488;
+    --brand-teal-glow: rgba(20, 184, 166, 0.4);
+    --brand-emerald: #059669;
+    --brand-cyan: #06b6d4;
+    --brand-slate: #0f172a;
+    --brand-glow: 0 0 20px rgba(20, 184, 166, 0.15);
+    --brand-radius-node: 2rem;
+    --brand-radius-card: 1.5rem;
+    --brand-font: 'Outfit', 'Inter', sans-serif;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f8fafc;
+    color: #1e293b;
+    overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+.brand-font {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+/* --- THE GLASSMORPHISM COLLECTION --- */
+
+.glass {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.glass-dark {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.glass-interactive:hover {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: var(--brand-teal-glow);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- DYNAMIC NODE ANIMATIONS --- */
+
+@keyframes pulse-node {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.5;
+        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 0 0 10px rgba(20, 184, 166, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        opacity: 0.5;
+        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    }
+}
+
+.node-pulse {
+    animation: pulse-node 3s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+/* --- PREMIUM UI HELPERS --- */
+
+.brand-gradient {
+    background: linear-gradient(135deg, #0d9488, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.brand-bg-gradient {
+    background: linear-gradient(135deg, #0d9488, #0891b2);
+}
+
+.card-shadow {
+    box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.4);
+}
+
+/* --- CLINICAL DATA VIZ --- */
+
+.data-row:hover {
+    background: rgba(13, 148, 136, 0.03);
+    box-shadow: inset 2px 0 0 var(--brand-teal);
+}
+
+.status-valid {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #d1fae5;
+}
+
+.status-pending {
+    background: #fefce8;
+    color: #a16207;
+    border: 1px solid #fef9c3;
+}
+
+.status-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fee2e2;
+}
+
+/* --- DARK MODE OVERRIDES --- */
+
+html.dark body {
+    background-color: #020617;
+    /* slate-950 */
+    color: #f8fafc;
+    /* slate-50 */
+}
+
+html.dark .glass {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    color: #f8fafc;
+}
+
+html.dark .glass-dark {
+    background: rgba(2, 6, 23, 0.90);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+html.dark .glass-interactive:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: var(--brand-teal-glow);
+}
+
+html.dark th,
+html.dark td {
+    color: #cbd5e1;
+}
+
+html.dark .text-slate-900 {
+    color: #f8fafc;
+}
+
+html.dark h1.text-slate-900,
+html.dark h2.text-slate-900,
+html.dark h3.text-slate-900 {
+    color: #f8fafc;
+}
+
+/* --- SCAN SWEEP ANIMATION --- */
+
+@keyframes scan-sweep {
+    0% {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(200%);
+        opacity: 0;
+    }
+}
+
+.animate-scan-sweep {
+    animation: scan-sweep 2s ease-in-out infinite;
+}
+
+@keyframes scan {
+    0% {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: translateY(300%);
+        opacity: 0;
+    }
+}
+
+.animate-scan {
+    animation: scan 1.5s ease-in-out infinite;
+}
