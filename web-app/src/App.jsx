@@ -66,7 +66,7 @@ const App = () => {
       const { data: userData, error: uError } = await supabase
         .from('users')
         .select('*')
-        .eq('username', username)
+        .ilike('username', username)
         .eq('password', hashedPassword)
         .single();
 
