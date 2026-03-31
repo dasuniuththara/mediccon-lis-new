@@ -535,7 +535,9 @@ function setupIPC() {
 
     secureHandle('login', async (event, credentials) => {
         try {
-            const user = db.prepare('SELECT id, username, role, authorized_machines FROM users WHERE username = ? AND password = ?').get(credentials.username, credentials.password);
+            const crypto = require('crypto');
+            const hashedPassword = crypto.createHash('sha256').update(credentials.password).digest('hex');
+            const user = db.prepare('SELECT id, username, role, authorized_machines FROM users WHERE username = ? AND password = ?').get(credentials.username, hashedPassword);
             if (user) {
                 return { success: true, user: { id: user.id, username: user.username, role: user.role, authorized_machines: user.authorized_machines } };
             }
@@ -784,8 +786,22 @@ app.whenReady().then(() => {
     try {
         db.prepare("UPDATE machines SET status = 'Offline'").run();
         log('[System] All machine statuses reset to Offline');
+
+        // --- SECURITY MIGRATION HOOK ---
+        log('[Security] Checking for legacy technician credentials...');
+        const users = db.prepare('SELECT id, username, password FROM users').all();
+        const crypto = require('crypto');
+        let migrationCount = 0;
+        users.forEach(u => {
+            if (u.password.length < 64) {
+                const hashed = crypto.createHash('sha256').update(u.password).digest('hex');
+                db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, u.id);
+                migrationCount++;
+            }
+        });
+        if (migrationCount > 0) log(`[Security] Upgraded ${migrationCount} local accounts to SHA-256 for Cloud Access.`);
     } catch (e) {
-        log('[Error] Status reset failed: ' + e.message);
+        log('[Error] Status reset or Security migration failed: ' + e.message);
     }
 
     setupIPC();

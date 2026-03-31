@@ -45,9 +45,15 @@ class MachineConfigManager {
                     if (driver) {
                         // 1. Persistent Connection Recovery
                         if (typeof driver.isConnected === 'function' && !driver.isConnected()) {
-                            console.log(`[Middleware] Detected broken link for ${machine.name}. Reconnecting...`);
-                            this.initializeConnections();
-                            break; // Restart loop after initConnections to avoid race conditions
+                            // Guard: Only initialize if not already in a recovery cycle
+                            if (!this.isRecovering) {
+                                this.isRecovering = true;
+                                console.log(`[Middleware] Detected broken link for ${machine.name}. Reconnecting...`);
+                                this.initializeConnections().finally(() => {
+                                    setTimeout(() => { this.isRecovering = false; }, 60000);
+                                });
+                            }
+                            break;
                         }
 
                         // 2. Heartbeat Protocol Pulse (Every 1s as requested by user)
@@ -302,7 +308,7 @@ class MachineConfigManager {
                         driver = new SerialDriver();
                         driver.connect(machine.com_port, machine.baud_rate || 9600, (rawData) => this.handleSerialData(machine, rawData), () => {
                             db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
-                            if (this.mainWindow) this.mainWindow.webContents.send('refresh-machines');
+                            if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
                         }, logger);
                     }
 
@@ -312,7 +318,7 @@ class MachineConfigManager {
 
                     // Update Status in DB
                     db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
-                    if (this.mainWindow) this.mainWindow.webContents.send('refresh-machines');
+                    if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
 
                 } catch (err) {
                     console.error(`[MachineConfig] Failed to connect ${machine.name}:`, err);
@@ -355,7 +361,7 @@ class MachineConfigManager {
                     this.activeConnections.ethernet[machine.id] = MS480Driver;
                     connectedCount++;
                     db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
-                    if (this.mainWindow) this.mainWindow.webContents.send('refresh-machines');
+                    if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
                 }
                 // (Future HL7 listeners can be added here)
 
@@ -379,7 +385,7 @@ class MachineConfigManager {
                 unit: result.unit || ''
             });
 
-            if (this.mainWindow) {
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
                 this.mainWindow.webContents.send('refresh-results', savedResult);
             }
             if (mappedName) {
@@ -406,7 +412,7 @@ class MachineConfigManager {
                 // Auto-Deduct Inventory
                 InventoryRepo.deductByTest(parsedData.test, machine.id);
 
-                if (this.mainWindow) {
+                if (this.mainWindow && !this.mainWindow.isDestroyed()) {
                     this.mainWindow.webContents.send('refresh-results', {
                         nic: parsedData.nic,
                         machineType: machine.type || 'biochemistry' // map type for UI
@@ -436,7 +442,7 @@ class MachineConfigManager {
                     });
 
                     // Broadcast enriched clinical node to Dashboard and Verification Matrix
-                    if (this.mainWindow) {
+                    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
                         this.mainWindow.webContents.send('refresh-results', savedResult);
                     }
 
@@ -469,7 +475,7 @@ class MachineConfigManager {
                         unit: test.unit || ''
                     });
 
-                    if (this.mainWindow) {
+                    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
                         this.mainWindow.webContents.send('refresh-results', savedResult);
                     }
 
@@ -569,7 +575,7 @@ class MachineConfigManager {
                 });
 
                 // Notify UI
-                if (this.mainWindow) {
+                if (this.mainWindow && !this.mainWindow.isDestroyed()) {
                     this.mainWindow.webContents.send('refresh-results', {
                         nic: nic,
                         machineType: 'pkl',

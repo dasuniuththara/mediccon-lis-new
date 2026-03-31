@@ -22,6 +22,11 @@ class MS480Driver {
 
         const tcpPort = parseInt(port) || 2000;
 
+        if (this.server && this.server.address() && this.server.address().port === tcpPort) {
+            this.logger.info(`[MS-480] Server already active on port ${tcpPort}.`);
+            return;
+        }
+
         if (this.server) {
             this.stopServer();
         }

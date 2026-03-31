@@ -1,4 +1,9 @@
 const db = require('./db-config');
+const crypto = require('crypto');
+
+const hashPassword = (password) => {
+    return crypto.createHash('sha256').update(password).digest('hex');
+};
 
 /**
  * System Repository
@@ -21,7 +26,8 @@ const SystemRepo = {
                 INSERT INTO users (username, password, role, authorized_machines)
                 VALUES (?, ?, ?, '')
             `);
-            return stmt.run(userData.username, userData.password, userData.role || 'User');
+            const hashedPassword = hashPassword(userData.password);
+            return stmt.run(userData.username, hashedPassword, userData.role || 'User');
         } catch (e) {
             console.error('registerUser error:', e);
             throw e;

@@ -60,20 +60,29 @@ class GhostSyncManager {
                 const localData = db.prepare(`SELECT * FROM ${table}`).all();
 
                 if (localData.length > 0) {
-                    const { data, error } = await this.supabase
+                    const { data, error: syncError } = await this.supabase
                         .from(table)
                         .upsert(localData, { onConflict: 'id' });
 
-                    if (error) {
-                        console.error(`[GHOST-SYNC] Table Sync Error (${table}):`, error.message);
-                        if (error.cause) console.error(`[GHOST-SYNC] Cause:`, error.cause);
+                    if (syncError) {
+                        console.error(`[CLOUD-SYNC] Table Error (${table}):`, syncError.message);
+                    } else {
+                        console.log(`[CLOUD-SYNC] Table Synced: ${table} (${localData.length} rows)`);
                     }
                 }
             }
 
             console.log('[GHOST-SYNC] Packet Transmission Complete.');
         } catch (e) {
-            console.error('[GHOST-SYNC] Sync Cycle Failure:', e.message);
+            if (e.message.includes('fetch failed')) {
+                if (!this.wasOffline) {
+                    console.log('[GHOST-SYNC] Node Offline: Pausing cloud transmission until internet signal returns.');
+                    this.wasOffline = true;
+                }
+            } else {
+                console.error('[GHOST-SYNC] Sync Cycle Failure:', e.message);
+                this.wasOffline = false;
+            }
         }
     }
 }
