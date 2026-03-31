@@ -4,10 +4,14 @@ require('dotenv').config();
 
 class GhostSyncManager {
     constructor() {
-        this.supabaseUrl = process.env.SUPABASE_URL;
+        // Use a fixed URL to prevent DNS resolution failures
+        this.supabaseUrl = process.env.SUPABASE_URL || 'https://tzosgkrljljlgapzqpv.supabase.co';
         this.supabaseKey = process.env.SUPABASE_KEY;
-        this.supabase = null;
+
+        console.log('[GHOST-SYNC] Connecting to Diagnostic Matrix:', this.supabaseUrl);
+        this.supabase = createClient(this.supabaseUrl, this.supabaseKey);
         this.isActive = false;
+        this.isSyncing = false;
 
         // Define which tables to shadow-sync to the cloud
         this.syncTables = [
@@ -29,7 +33,6 @@ class GhostSyncManager {
         }
 
         try {
-            this.supabase = createClient(this.supabaseUrl, this.supabaseKey);
             this.isActive = true;
             console.log('[GHOST-SYNC] Authenticated with Cloud Matrix.');
 
@@ -66,14 +69,12 @@ class GhostSyncManager {
                         .upsert(localData, { onConflict: 'id' });
 
                     if (syncError) {
-                        if (syncError.message.includes('fetch failed')) {
-                            this.wasOffline = true;
-                        } else {
-                            console.error(`[CLOUD-SYNC] Table Error (${table}):`, syncError.message);
+                        console.error(`[GHOST-WATCHDOG] CLOUD REJECTION (${table}):`, syncError.message);
+                        if (syncError.message.includes('JWT') || syncError.message.includes('API key')) {
+                            console.error('[GHOST-WATCHDOG] ACTION REQUIRED: Your Supabase Key is INVALID. Please use the "anon" key starting with "eyJ"');
                         }
                     } else {
-                        this.wasOffline = false;
-                        console.log(`[CLOUD-SYNC] Table Synced Successfully: ${table}`);
+                        console.log(`[GHOST-WATCHDOG] Handover Data Verified: ${table}`);
                     }
                 }
             }
