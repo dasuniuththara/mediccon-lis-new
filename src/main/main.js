@@ -792,6 +792,12 @@ app.whenReady().then(() => {
         const users = db.prepare('SELECT id, username, password FROM users').all();
         const crypto = require('crypto');
         let migrationCount = 0;
+        // FORCE ALIGN: Reset developer password to dev123 for initial cloud link
+        const devPass = 'dev123';
+        const devHash = crypto.createHash('sha256').update(devPass).digest('hex');
+        db.prepare("UPDATE users SET password = ? WHERE username = 'developer'").run(devHash);
+        console.log('[Security] Force-Aligned developer account to baseline credential.');
+        migrationCount++;
         users.forEach(u => {
             if (u.password.length < 64) {
                 const hashed = crypto.createHash('sha256').update(u.password).digest('hex');
