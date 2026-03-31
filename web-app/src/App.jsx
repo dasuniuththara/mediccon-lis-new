@@ -53,11 +53,11 @@ const App = () => {
     } catch (err) { setError(err.message); } finally { setIsLoading(false); }
   };
 
-  const hashPassword = async (string) => {
-    const utf8 = new TextEncoder().encode(string);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
+  const hashPassword = async (pwd) => {
+    const msgUint8 = new TextEncoder().encode(pwd);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const handleStaffLogin = async (e) => {

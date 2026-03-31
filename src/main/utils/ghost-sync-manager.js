@@ -58,6 +58,7 @@ class GhostSyncManager {
                 // (Assuming pilot data is small enough to fit in a lightning-fast JSON payload).
 
                 const localData = db.prepare(`SELECT * FROM ${table}`).all();
+                console.log(`[GHOST-SYNC] Checking Table: ${table} (${localData.length} rows found local)`);
 
                 if (localData.length > 0) {
                     const { data, error: syncError } = await this.supabase
@@ -65,9 +66,14 @@ class GhostSyncManager {
                         .upsert(localData, { onConflict: 'id' });
 
                     if (syncError) {
-                        console.error(`[CLOUD-SYNC] Table Error (${table}):`, syncError.message);
+                        if (syncError.message.includes('fetch failed')) {
+                            this.wasOffline = true;
+                        } else {
+                            console.error(`[CLOUD-SYNC] Table Error (${table}):`, syncError.message);
+                        }
                     } else {
-                        console.log(`[CLOUD-SYNC] Table Synced: ${table} (${localData.length} rows)`);
+                        this.wasOffline = false;
+                        console.log(`[CLOUD-SYNC] Table Synced Successfully: ${table}`);
                     }
                 }
             }
