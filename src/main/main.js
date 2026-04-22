@@ -1,6 +1,20 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const dns = require('dns');
+
+// 🌐 FORCE GLOBAL DNS (Solves [NETWORK-TRACE] DNS FAILURE)
+try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) { }
+
+// --- PACKAGE-AWARE CREDENTIALS ---
+// When the app is compiled, the .env file moves to the 'resources' folder.
+const envPath = app.isPackaged
+    ? path.join(process.resourcesPath, '.env')
+    : path.join(__dirname, '../../.env');
+
+require('dotenv').config({ path: envPath });
 const os = require('os');
 const { execSync } = require('child_process');
 
@@ -19,6 +33,15 @@ log('[DEBUG] Starting Main Process');
 const MachineConfigManager = require('./managers/machine-config-manager');
 const BackupManager = require('./utils/backup-manager');
 const GhostSyncManager = require('./utils/ghost-sync-manager');
+const LocalApiServer = require('./utils/local-api-server');
+
+log('[MATRIX-INIT] >>> SYSTEM BOOT SEQUENCE ACTIVATED <<<');
+dns.setDefaultResultOrder('ipv4first');
+
+dns.lookup('tzosgkrljljlgapzqpv.supabase.co', (err, address) => {
+    if (err) log(`[NETWORK-TRACE] DNS FAILURE: ${err.message}`);
+    else log(`[NETWORK-TRACE] SIGNAL FOUND: Cloud Node is at ${address}`);
+});
 
 let mainWindow;
 let db;
@@ -96,7 +119,8 @@ const secureHandle = (channel, handler) => {
             'get-patient-results', 'get-security-stats', 'get-users',
             'get-test-reagents', 'get-machine-logs', 'get-machine-config',
             'get-referring-doctors', 'add-referring-doctor', 'update-referring-doctor', 'delete-referring-doctor',
-            'save-barcode', 'update-result-test-name', 'get-deep-analytics', 'delete-patient', 'get-patient-trends'
+            'save-barcode', 'update-result-test-name', 'get-deep-analytics', 'delete-patient', 'get-patient-trends',
+            'register-user', 'delete-user'
         ];
         if (!isHardwareAuthorized() && !bypassChannels.includes(channel)) {
             throw new Error('UNAUTHORIZED_HARDWARE');
@@ -118,6 +142,10 @@ function setupIPC() {
     // START MOTHER UI CLOUD SYNC PROTOCOL
     log('[DEBUG] Initiating GhostSyncManager for Cloud Backup...');
     GhostSyncManager.initialize();
+
+    // START LOCAL API SERVER FOR WEB DASHBOARD
+    log('[DEBUG] Starting Local API Server for Web Dashboard...');
+    LocalApiServer.startServer();
 
     secureHandle('check-hardware', async () => ({ isAuthorized: isHardwareAuthorized(), hwid: getHardwareInfo() }));
 
@@ -632,11 +660,14 @@ function setupIPC() {
 
     secureHandle('get-machines', async (event, user) => {
         const machines = MachineConfigManager.getAllMachines();
-        const isDeveloper = user && ['developer', 'master access', 'admin'].includes(user.role?.toLowerCase());
-        if (isDeveloper) return machines;
 
-        // Middleware: Fetch fresh permissions from DB for this user
+        // Root Authority Bypass: If developer or internal call, show everything
+        const isDev = !user || !user.role || ['developer', 'master access', 'admin', 'root'].includes(user.role.toLowerCase());
+        if (isDev) return machines;
+
+        // Middleware: Check permissions for standard operators
         try {
+            if (!user || !user.username) return []; // Guard against unidentified requests
             const dbUser = db.prepare('SELECT authorized_machines FROM users WHERE username = ?').get(user.username);
             if (!dbUser || !dbUser.authorized_machines) return [];
 
@@ -665,6 +696,9 @@ function setupIPC() {
                     log(`[Worklist] Dispatch fault: ${de.message}`);
                 }
             }
+
+            // --- AUTOMATION HOOK: SYNC NOW ---
+            GhostSyncManager.executeSyncCycle();
 
             return result;
         } catch (e) {
@@ -698,7 +732,9 @@ function setupIPC() {
 
     secureHandle('analyzer-results', async (event, resultData) => {
         log(`[IPC] Analyzer results received for patient: ${resultData.patient?.id}`);
-        return await BidirectionalManager.handleAnalyzerResults(resultData);
+        const status = await BidirectionalManager.handleAnalyzerResults(resultData);
+        GhostSyncManager.executeSyncCycle(); // Auto-push machine results
+        return status;
     });
 
     secureHandle('get-middleware-stats', async () => {
@@ -726,6 +762,10 @@ function setupIPC() {
         }
     });
 
+    secureHandle('get-facility-id', async () => {
+        return SystemRepo.getFacilityId();
+    });
+
     secureHandle('save-machine-config', async (event, config) => {
         return MachineConfigManager.saveMachineConfig(config);
     });
@@ -751,7 +791,11 @@ function setupIPC() {
     });
 
     secureHandle('get-pending-results', async () => PatientRepo.getPendingResults());
-    secureHandle('validate-result', async (event, { id, userId }) => PatientRepo.validateResult(id, userId));
+    secureHandle('validate-result', async (event, { id, userId }) => {
+        const result = await PatientRepo.validateResult(id, userId);
+        if (result.success) GhostSyncManager.executeSyncCycle(); // Trigger sync on validation
+        return result;
+    });
     secureHandle('update-result', async (event, { id, value, userId }) => PatientRepo.updateResult(id, value, userId));
     secureHandle('update-result-test-name', async (event, { id, testName, userId }) => PatientRepo.updateResultTestName(id, testName, userId));
     secureHandle('reject-result', async (event, id) => PatientRepo.rejectResult(id));
@@ -776,6 +820,17 @@ function setupIPC() {
     });
 
 
+    secureHandle('export-sync-snapshot', async () => {
+        try {
+            const pats = db.prepare('SELECT * FROM patients').all();
+            const res = db.prepare('SELECT * FROM results').all();
+            const snapshot = JSON.stringify({ patients: pats, results: res }, null, 2);
+            return { success: true, data: snapshot };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    });
+
     log('[DEBUG] IPC Ready');
 }
 
@@ -793,7 +848,7 @@ app.whenReady().then(() => {
         const crypto = require('crypto');
         let migrationCount = 0;
         // FORCE ALIGN: Reset developer password to dev123 for initial cloud link
-        const devPass = 'dev123';
+        const devPass = 'Medi@123';
         const devHash = crypto.createHash('sha256').update(devPass).digest('hex');
         db.prepare("UPDATE users SET password = ? WHERE username = 'developer'").run(devHash);
         console.log('[Security] Force-Aligned developer account to baseline credential.');
@@ -818,7 +873,8 @@ app.whenReady().then(() => {
     require('./utils/auto-seed-ms480').deployMS480();
     MachineConfigManager.initializeConnections();
 
-    // Ignite the Cloud Bridge
+    // Ignite the Cloud Bridge & Local Network Matrix
+    require('../../local-api-server');
     GhostSyncManager.initialize();
 }).catch(err => {
     log('[DEBUG] app.whenReady failed: ' + err);

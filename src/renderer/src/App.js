@@ -82,7 +82,7 @@ const AppContent = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden selection:bg-teal-500/30 selection:text-white">
+    <div className="flex h-screen bg-[#020617] font-sans text-slate-100 overflow-hidden selection:bg-teal-500/30 selection:text-white">
 
       {/* 1. Primary Command Pipeline (Sidebar) */}
       <div className="print:hidden">
@@ -90,7 +90,7 @@ const AppContent = () => {
       </div>
 
       {/* 2. Primary Data Matrix (Right side of Sidebar) */}
-      <div className="flex-1 ml-[340px] flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 ml-[340px] flex flex-col h-full overflow-hidden relative bg-[#020617]">
 
         {/* Ambient Matrix Background */}
         <AmbientMatrix />
@@ -98,36 +98,31 @@ const AppContent = () => {
         {/* Technical Grid Overlay (Subtle) */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] pointer-events-none z-0"></div>
 
-        {/* Global Intelligence Ingress (Navbar) */}
-        <div className="print:hidden">
-          <Navbar />
-        </div>
-
         {/* Dynamic Workspace Rendering Area */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/50 relative z-10 transition-all duration-700">
-          <div className="min-h-full pb-32 px-10">
+        <main className="flex-1 overflow-y-auto custom-scrollbar relative z-10 transition-all duration-700">
+          <div className="min-h-full">
             {renderPage()}
           </div>
         </main>
 
         {/* 3. Global System Telemetry (Footer) */}
-        <footer className="h-14 bg-white/70 backdrop-blur-md border-t border-white px-12 flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] relative z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.02)] print:hidden">
+        <footer className="h-14 bg-slate-950 border-t border-white/5 px-12 flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] relative z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] print:hidden">
           <div className="flex items-center gap-8">
             <span className="flex items-center gap-3">
               <div className="h-2 w-2 rounded-full bg-teal-600 animate-pulse shadow-[0_0_8px_rgba(20,184,166,0.6)]"></div>
-              © {new Date().getFullYear()} {labProfile.lab_name.toUpperCase()} <span className="text-slate-900 italic">LIS ADVANCED</span>
+              © {new Date().getFullYear()} {labProfile.lab_name.toUpperCase()} <span className="text-white opacity-40 italic">LIS COMMAND</span>
             </span>
-            <div className="h-6 w-px bg-slate-200" />
+            <div className="h-6 w-px bg-white/5" />
             <div className="flex items-center gap-4">
-              <span className="text-slate-600 hover:text-teal-500 cursor-pointer transition-colors uppercase tracking-[0.3em]">Documentation</span>
-              <div className="h-1 w-1 bg-slate-200 rounded-full"></div>
-              <span className="text-slate-600 hover:text-teal-500 cursor-pointer transition-colors uppercase tracking-[0.3em]">Node Status</span>
+              <span className="text-slate-500 hover:text-teal-500 cursor-pointer transition-colors uppercase tracking-[0.3em]">Documentation</span>
+              <div className="h-1 w-1 bg-slate-800 rounded-full"></div>
+              <span className="text-slate-500 hover:text-teal-500 cursor-pointer transition-colors uppercase tracking-[0.3em]">Node Status</span>
             </div>
           </div>
 
           <div className="flex items-center gap-10">
-            <div className="flex items-center gap-4 text-slate-600">
-              <div className="flex items-center gap-1.5 grayscale opacity-50">
+            <div className="flex items-center gap-4 text-slate-500">
+              <div className="flex items-center gap-1.5 opacity-30">
                 <div className="h-1 w-1.5 bg-slate-400 rounded-full"></div>
                 <div className="h-1 w-3 bg-slate-400 rounded-full"></div>
                 <div className="h-1 w-2 bg-slate-400 rounded-full"></div>
@@ -135,18 +130,19 @@ const AppContent = () => {
               DB CLUSTER: STABLE / WAL_SYNC
             </div>
 
-            <div className="flex items-center gap-4 bg-emerald-50 px-5 py-2 rounded-2xl border border-emerald-100 shadow-sm">
+            <div className="flex items-center gap-4 bg-teal-900/20 px-5 py-2 rounded-2xl border border-teal-500/10 shadow-sm">
               <div className="relative">
-                <div className="absolute inset-0 bg-emerald-500 blur-md opacity-30 animate-pulse"></div>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 relative z-10"></div>
+                <div className="absolute inset-0 bg-teal-500 blur-md opacity-30 animate-pulse"></div>
+                <div className="h-2 w-2 rounded-full bg-teal-500 relative z-10"></div>
               </div>
-              <span className="text-emerald-700 font-black tracking-widest text-[9px]">ENCRYPTED HL7 TUNNEL ACTIVE</span>
+              <span className="text-teal-400 font-black tracking-widest text-[9px]">ENCRYPTED HL7 TUNNEL ACTIVE</span>
             </div>
           </div>
         </footer>
 
       </div>
     </div>
+
   );
 };
 

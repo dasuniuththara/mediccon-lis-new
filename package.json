@@ -2,7 +2,7 @@
   "name": "mediccon-lis",
   "version": "1.0.0",
   "main": "src/main/main.js",
-  "description": "Mediccon Laboratory Information System with HL7/ASTM Support",
+  "description": "Mediccon Laboratory Information System",
   "scripts": {
     "start": "cmd /C \"set ELECTRON_RUN_AS_NODE=&& electron .\"",
     "build": "node compiler.js && electron-builder",
@@ -15,38 +15,43 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "src/main/**/*",
+      "src/renderer/index.html",
+      "src/renderer/global.css",
+      "src/renderer/dist/**/*",
+      "local-api-server.js",
+      "package.json"
+    ],
     "win": {
       "target": [
-        "nsis",
         "portable"
-      ],
-      "icon": "public/icon.ico"
+      ]
     },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": true,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "public/icon.ico",
-      "uninstallerIcon": "public/icon.ico",
-      "installerHeaderIcon": "public/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Mediccon LIS"
+    "portable": {
+      "artifactName": "Mediccon LIS Core.exe",
+      "requestExecutionLevel": "admin"
     },
     "extraResources": [
-      "src/database/**/*",
-      "src/config/**/*"
+      "src/main/database/**/*",
+      "src/main/config/**/*",
+      ".env"
     ]
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.100.0",
+    "@supabase/supabase-js": "^2.101.1",
+    "autoprefixer": "^10.4.27",
+    "axios": "^1.14.0",
     "better-sqlite3": "^11.10.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
     "electron-log": "^5.0.0",
+    "framer-motion": "^12.38.0",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.344.0",
     "papaparse": "^5.5.3",
+    "postcss": "^8.5.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.6.0",
@@ -54,7 +59,8 @@
     "react-speech-recognition": "^4.0.1",
     "recharts": "^3.8.0",
     "regenerator-runtime": "^0.14.1",
-    "serialport": "^12.0.0"
+    "serialport": "^12.0.0",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
@@ -64,7 +70,7 @@
     "electron": "^31.7.7",
     "electron-builder": "^26.8.1",
     "electron-rebuild": "^3.2.9",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^3.4.19",
     "vite": "^7.3.1",
     "wait-on": "^9.0.3"
   }

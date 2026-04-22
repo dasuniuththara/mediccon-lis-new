@@ -1,7 +1,18 @@
+const { app } = require('electron');
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const db = new Database('mediccon_lis.db');
+// --- PERMANENT DATA VAULT ---
+// We check for a "Local Payload" in the root directory first (for portable builds).
+// If none exists, we fallback to the OS-protected Roaming folder.
+const fs = require('fs');
+const localDb = path.join(process.cwd(), 'mediccon_lis.db');
+const roamingDb = app ? path.join(app.getPath('userData'), 'mediccon_lis.db') : 'mediccon_lis.db';
+
+const dbPath = fs.existsSync(localDb) ? localDb : roamingDb;
+const db = new Database(dbPath);
+
+console.log('[DB] Identity Matrix Linked to:', dbPath);
 
 // --- DATABASE PERFORMANCE DRIVER ---
 db.pragma('journal_mode = WAL');
@@ -216,24 +227,28 @@ const getSerial = () => {
 };
 
 try {
-  const currentHwid = getSerial();
-  const existingHwid = db.prepare("SELECT value FROM system_settings WHERE key = 'authorized_hwid'").get();
+    const currentHwid = getSerial();
+    const existingHwid = db.prepare("SELECT value FROM system_settings WHERE key = 'authorized_hwid'").get();
 
-  if (!existingHwid) {
-    db.prepare("INSERT INTO system_settings (key, value) VALUES ('authorized_hwid', ?)").run(currentHwid);
-    console.log('[Licensing] Initial PC Registered:', currentHwid);
-  } else {
-    console.log('[Licensing] Authorized PC:', existingHwid.value);
-  }
+    if (!existingHwid) {
+        db.prepare("INSERT INTO system_settings (key, value) VALUES ('authorized_hwid', ?)").run(currentHwid);
+        db.prepare("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('facility_id', ?)").run('NODE-' + currentHwid.substring(0, 8));
+        console.log('[Licensing] Initial PC Registered:', currentHwid);
+    } else {
+        console.log('[Licensing] Authorized PC:', existingHwid.value);
+    }
 } catch (err) {
   console.error('[Licensing Error]:', err.message);
 }
 
-// Insert default users
-const insertUser = db.prepare(`INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)`);
-insertUser.run('developer', 'dev123', 'Developer');
-insertUser.run('user', 'user123', 'User');
-insertUser.run('unique', 'unique123', 'User');
+// --- SECURITY PROTOCOL: SHA-256 HASHING ---
+const hashPassword = (pass) => require('crypto').createHash('sha256').update(pass).digest('hex');
+
+// Insert default users with Secure Hashes
+const insertUser = db.prepare(`INSERT OR IGNORE INTO users (username, password, role, authorized_machines) VALUES (?, ?, ?, ?)`);
+insertUser.run('developer', hashPassword('dev123'), 'Developer', '');
+insertUser.run('user', hashPassword('user123'), 'User', '');
+insertUser.run('unique', hashPassword('unique123'), 'User', '');
 
 // Migration Helper: Add column if not exists
 const addCol = (table, col, def) => {

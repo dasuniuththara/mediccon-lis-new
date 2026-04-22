@@ -673,7 +673,7 @@ const HematologySuite = () => {
                                                     <div className="h-40 w-full border border-slate-800 relative bg-emerald-500/[0.02] rounded-[2rem] overflow-hidden group/hist hover:border-emerald-500/30 transition-all">
                                                         <div className="absolute top-4 left-5 text-[8px] font-black text-emerald-500/60 uppercase tracking-[0.3em]">Kinetic Distribution</div>
                                                         <svg className="absolute inset-0 w-full h-full p-4" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                                            <path d="M 5 95 L 15 20 L 25 70 L 35 95 L 45 60 L 55 95" fill="none" stroke="rgba(16,185,129,0.4)" strokeWidth="3" strokeLinejoin="round" />
+                                                            <path d="M 5 95 Q 15 30 35 85 Q 50 95 95 95" fill="none" stroke="rgba(16,185,129,0.4)" strokeWidth="3" strokeLinecap="round" />
                                                         </svg>
                                                     </div>
                                                 </div>

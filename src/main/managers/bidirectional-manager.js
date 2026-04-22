@@ -146,10 +146,10 @@ class BidirectionalManager {
                 return this.sendErrorToAnalyzer(machineId, 'PATIENT_NOT_FOUND');
             }
 
-            // Get pending orders
+            // Get pending or partially sent orders
             const order = db.prepare(`
                 SELECT * FROM pending_orders 
-                WHERE nic = ? AND status = 'pending'
+                WHERE nic = ? AND status IN ('pending', 'sent_to_analyzer')
                 ORDER BY created_at DESC LIMIT 1
             `).get(nic);
 
@@ -161,16 +161,33 @@ class BidirectionalManager {
             // Parse ordered tests
             const orderedTests = order.tests.split(',');
 
-            // Map tests to analyzer-specific codes
-            const mappedTests = orderedTests.map(testCode => {
-                const mapping = this.testMappings[testCode];
-                return {
-                    lisCode: testCode,
-                    analyzerCode: mapping ? mapping.analyzerCode : testCode,
-                    name: mapping ? mapping.name : testCode,
-                    category: mapping ? mapping.category : 'Unknown'
-                };
-            });
+            // --- CATEGORICAL ROUTING INTELLIGENCE ---
+            // Get machine configuration to determine protocol-affinity
+            const machine = db.prepare('SELECT * FROM machines WHERE id = ?').get(machineId);
+            const machineCategory = machine ? (machine.category || 'Biochemistry') : 'Biochemistry';
+
+            // Map and Filter tests categorically
+            const mappedTests = orderedTests
+                .map(testCode => {
+                    const mapping = this.testMappings[testCode];
+                    return {
+                        lisCode: testCode,
+                        analyzerCode: mapping ? mapping.analyzerCode : testCode,
+                        name: mapping ? mapping.name : testCode,
+                        category: mapping ? mapping.category : 'Biochemistry'
+                    };
+                })
+                .filter(t => {
+                    // Logic: If we know the machine, ONLY send tests belonging to its category.
+                    // This creates a professional, categorical data stream.
+                    if (!machine || !machine.category) return true;
+                    return t.category.toLowerCase() === machine.category.toLowerCase();
+                });
+
+            if (mappedTests.length === 0) {
+                console.log(`[Bidirectional] No categorical matches for ${machineId} (${machineCategory})`);
+                return { success: false, error: 'NO_RELEVANT_TESTS_FOR_THIS_NODE' };
+            }
 
             // Build response message
             const response = {
@@ -183,12 +200,16 @@ class BidirectionalManager {
             // Send test order to analyzer
             await this.sendTestOrderToAnalyzer(machineId, response);
 
-            // Update order status
+            // Update order status and attach which machine is now handling it
+            // We append the machineId to a list to track cluster fulfillment
+            const currentMachines = order.machine_name ? `${order.machine_name}, ${machineId}` : machineId;
             db.prepare(`
                 UPDATE pending_orders 
-                SET status = 'sent_to_analyzer', updated_at = ?
-                WHERE nic = ? AND status = 'pending'
-            `).run(new Date().toISOString(), nic);
+                SET status = 'sent_to_analyzer', 
+                    machine_name = ?,
+                    updated_at = ?
+                WHERE id = ?
+            `).run(currentMachines, new Date().toISOString(), order.id);
 
             // Simulation of protocol handshake for the logs
             logger.info("Initializing ASTM/LIS2-A Data Frame Transfer...");
@@ -407,14 +428,19 @@ class BidirectionalManager {
             `);
 
             // One-time deduplication: Keep only the newest pending order per NIC
+            // Migration: Add machine_name if it doesn't exist
+            try {
+                db.exec("ALTER TABLE pending_orders ADD COLUMN machine_name TEXT");
+            } catch (e) { /* ignore if already exists */ }
+
             try {
                 db.exec(`
                     DELETE FROM pending_orders 
                     WHERE id NOT IN (
                         SELECT MAX(id) FROM pending_orders 
-                        WHERE status = 'pending'
+                        WHERE status IN ('pending', 'sent_to_analyzer')
                         GROUP BY nic
-                    ) AND status = 'pending'
+                    ) AND status IN ('pending', 'sent_to_analyzer')
                 `);
                 // Also purge old completed/sent rows older than 1 day
                 db.exec(`

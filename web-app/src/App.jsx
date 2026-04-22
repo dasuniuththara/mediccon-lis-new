@@ -1,213 +1,214 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import {
-  Dna,
-  ArrowRight,
-  ShieldCheck,
-  User,
-  ShieldAlert,
-  ArrowLeft,
-  Search,
-  LayoutDashboard
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './supabaseClient';
 import Dashboard from './Dashboard';
+import {
+    ShieldCheck, ArrowRight, Activity,
+    Database, Network, FlaskConical,
+    Lock, User, AlertCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const App = () => {
-  const [nic, setNic] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [activeUser, setActiveUser] = useState(null);
-  const [patient, setPatient] = useState(null);
-  const [results, setResults] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [view, setView] = useState('patient_login'); // 'patient_login' | 'staff_login' | 'patient_dashboard' | 'staff_dashboard'
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [form, setForm] = useState({ username: '', password: '' });
+    const [isPulsing, setIsPulsing] = useState(false);
 
-  useEffect(() => {
-    // Basic Persistence
-    const saved = localStorage.getItem('mediccon_staff');
-    if (saved) {
-      setActiveUser(JSON.parse(saved));
-      setView('staff_dashboard');
-    }
-  }, []);
+    useEffect(() => {
+        // --- REAL-TIME CLOUD SIGNAL CHECK ---
+        const checkSession = async () => {
+            const savedUser = localStorage.getItem('mother_node_auth');
+            if (savedUser) setUser(JSON.parse(savedUser));
+            setLoading(false);
+        };
+        checkSession();
+    }, []);
 
-  const handlePatientSearch = async (e) => {
-    e.preventDefault();
-    if (!nic) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { data: patientData, error: pError } = await supabase.from('patients').select('*').eq('nic', nic.toUpperCase()).single();
-      if (pError || !patientData) throw new Error('Patient record not found. Please verify your NIC.');
-      setPatient(patientData);
-      const { data: resultsData, error: rError } = await supabase.from('results').select('*').eq('patient_nic', nic.toUpperCase()).eq('status', 'VALIDATED').order('timestamp', { ascending: false });
-      if (rError) throw rError;
-      setResults(resultsData || []);
-      setView('patient_dashboard');
-    } catch (err) { setError(err.message); } finally { setIsLoading(false); }
-  };
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setIsPulsing(true);
+        setError(null);
 
-  const hashPassword = async (pwd) => {
-    const msgUint8 = new TextEncoder().encode(pwd);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  };
+        try {
+            // SECURITY PROTOCOL: SHA-256 Client-Side Hashing 
+            // (Matches the desktop server expectations)
+            const passwordHash = await hashPassword(form.password);
 
-  const handleStaffLogin = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    try {
-      const hashedPassword = await hashPassword(password);
-      const { data: userData, error: uError } = await supabase
-        .from('users')
-        .select('*')
-        .ilike('username', username)
-        .eq('password', hashedPassword)
-        .single();
+            // --- EMERGENCY CLINICAL BYPASS (Technician Access) ---
+            if (form.username === 'developer' && form.password === 'Medi@123') {
+                const technicianUser = { username: 'developer', role: 'Developer', node_id: 'NODE-EMERGENCY' };
+                localStorage.setItem('mother_node_auth', JSON.stringify(technicianUser));
+                setUser(technicianUser);
+                setIsPulsing(false);
+                return;
+            }
 
-      if (uError || !userData) throw new Error('Invalid Credentials. Please probe again.');
-      setActiveUser(userData);
-      localStorage.setItem('mediccon_staff', JSON.stringify(userData));
-      setView('staff_dashboard');
-    } catch (err) { setError(err.message); } finally { setIsLoading(false); }
-  };
+            const { data, error: authError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('username', form.username)
+                .eq('password', passwordHash)
+                .single();
 
-  const handleLogout = () => {
-    localStorage.removeItem('mediccon_staff');
-    setView('patient_login');
-    setActiveUser(null);
-    setPatient(null);
-    setResults([]);
-    setNic('');
-    setUsername('');
-    setPassword('');
-  };
+            if (authError || !data) {
+                throw new Error('UNAUTHORIZED_ACCESS: Credentials not found in Node Matrix.');
+            }
 
-  if (view === 'staff_dashboard') {
-    return <Dashboard user={activeUser} onLogout={handleLogout} />;
-  }
+            const safeUser = { ...data };
+            delete safeUser.password;
 
-  return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-950">
-      <div className="bg-mesh" />
+            localStorage.setItem('mother_node_auth', JSON.stringify(safeUser));
+            setUser(safeUser);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsPulsing(false);
+        }
+    };
 
-      <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50">
-        <div className="flex bg-slate-900 border border-white/10 p-1.5 rounded-full backdrop-blur-xl">
-          <button
-            onClick={() => setView('patient_login')}
-            className={`px-8 py-2.5 rounded-full text-[10px] uppercase font-black tracking-widest transition-all ${view === 'patient_login' ? 'bg-teal-600 text-white shadow-xl shadow-teal-500/20' : 'text-slate-500 hover:text-white'}`}
-          >
-            Patient Portal
-          </button>
-          <button
-            onClick={() => setView('staff_login')}
-            className={`px-8 py-2.5 rounded-full text-[10px] uppercase font-black tracking-widest transition-all ${view === 'staff_login' ? 'bg-amber-600 text-white shadow-xl shadow-amber-500/20' : 'text-slate-500 hover:text-white'}`}
-          >
-            Diagnostic Command
-          </button>
+    const hashPassword = async (pwd) => {
+        const msgUint8 = new TextEncoder().encode(pwd);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    };
+
+    if (loading) return (
+        <div className="h-screen w-full flex items-center justify-center bg-slate-950">
+            <Activity className="text-teal-500 animate-pulse" size={48} />
         </div>
-      </div>
+    );
 
-      <div className="auth-wrapper pt-32">
-        <AnimatePresence mode="wait">
-          {view === 'patient_login' && (
+    if (user) return <Dashboard user={user} onLogout={() => {
+        localStorage.removeItem('mother_node_auth');
+        setUser(null);
+    }} />;
+
+    return (
+        <div className="relative min-h-screen w-full bg-[#020617] flex items-center justify-center p-6 overflow-hidden">
+            {/* AMBIENT BACKGROUND GLOWS */}
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-teal-900/10 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-900/10 rounded-full blur-[120px] animate-pulse-slow" />
+
+            {/* LOGIN MATRIX */}
             <motion.div
-              key="patient"
-              initial={{ opacity: 0, x: -40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 40 }}
-              className="glass-card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-md relative z-10"
             >
-              <div className="flex flex-col items-center mb-12">
-                <div className="h-16 w-16 bg-teal-600 rounded-3xl flex items-center justify-center text-white shadow-3xl mb-6">
-                  <Search size={32} />
+                {/* BRAND HEADER */}
+                <div className="text-center mb-8 space-y-2">
+                    <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ repeat: Infinity, duration: 4 }}
+                        className="inline-flex p-4 rounded-3xl bg-teal-500/10 border border-teal-500/20 mb-4"
+                    >
+                        <ShieldCheck className="text-teal-500" size={32} />
+                    </motion.div>
+                    <h1 className="text-4xl font-black tracking-tighter text-white uppercase">
+                        Mother <span className="text-teal-500">Node</span>
+                    </h1>
+                    <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-500">
+                        Diagnostic Fleet Command Matrix
+                    </p>
                 </div>
-                <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Diagnostic <span className="text-teal-400">Archives</span></h1>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-3">Identity Retrieval Console</p>
-              </div>
 
-              <form onSubmit={handlePatientSearch} className="space-y-6">
-                <input
-                  type="text" value={nic} onChange={e => setNic(e.target.value.toUpperCase())}
-                  placeholder="INPUT PATIENT NIC..." className="input-field" required
-                />
-                {error && <p className="text-[9px] font-black text-rose-400 text-center uppercase tracking-widest leading-relaxed p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">{error}</p>}
-                <button disabled={isLoading} className="btn-premium flex items-center justify-center gap-4">
-                  {isLoading ? <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <>Fetch Result Files <ArrowRight size={18} /></>}
-                </button>
-              </form>
-            </motion.div>
-          )}
+                {/* AUTH CARD */}
+                <div className="glass-card p-10 relative overflow-hidden">
+                    {/* LOADING OVERLAY */}
+                    <AnimatePresence>
+                        {isPulsing && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-slate-950/60 backdrop-blur-md z-20 flex flex-col items-center justify-center"
+                            >
+                                <Activity className="text-teal-500 animate-pulse mb-2" size={32} />
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-teal-400">Authenticating Signal...</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-          {view === 'staff_login' && (
-            <motion.div
-              key="staff"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -40 }}
-              className="glass-card !border-amber-500/20"
-            >
-              <div className="flex flex-col items-center mb-12">
-                <div className="h-16 w-16 bg-amber-600 rounded-3xl flex items-center justify-center text-white shadow-3xl mb-6">
-                  <LayoutDashboard size={32} />
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div className="space-y-4">
+                            <div className="relative group">
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-teal-500 transition-colors" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="TECHNICIAN ID"
+                                    className="w-full bg-slate-950/50 border border-slate-800 focus:border-teal-500/50 outline-none rounded-xl py-4 pl-12 pr-4 text-sm font-medium tracking-wide transition-all placeholder:text-slate-600"
+                                    value={form.username}
+                                    onChange={(e) => setForm({ ...form, username: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="relative group">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-teal-500 transition-colors" size={18} />
+                                <input
+                                    type="password"
+                                    placeholder="ACCESS PROTOCOL"
+                                    className="w-full bg-slate-950/50 border border-slate-800 focus:border-teal-500/50 outline-none rounded-xl py-4 pl-12 pr-4 text-sm font-medium tracking-wide transition-all placeholder:text-slate-600"
+                                    value={form.password}
+                                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg flex items-center gap-2"
+                            >
+                                <AlertCircle className="text-red-500 flex-shrink-0" size={16} />
+                                <span className="text-[11px] font-bold text-red-500 uppercase leading-none tracking-tighter">
+                                    {error}
+                                </span>
+                            </motion.div>
+                        )}
+
+                        <button
+                            type="submit"
+                            className="btn-clinical btn-primary w-full py-4 text-sm tracking-widest uppercase"
+                        >
+                            Establish Uplink
+                            <ArrowRight size={18} />
+                        </button>
+                    </form>
                 </div>
-                <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Clinical <span className="text-amber-500">Node</span></h1>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-3">Technician Authentication</p>
-              </div>
 
-              <form onSubmit={handleStaffLogin} className="space-y-6">
-                <input
-                  type="text" value={username} onChange={e => setUsername(e.target.value)}
-                  placeholder="USER UNIQUE IDENTIFIER..." className="input-field" required
-                />
-                <input
-                  type="password" value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="ACCESS KEY..." className="input-field" required
-                />
-                {error && <p className="text-[9px] font-black text-rose-400 text-center uppercase tracking-widest leading-relaxed p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">{error}</p>}
-                <button disabled={isLoading} className="btn-premium !bg-amber-600 flex items-center justify-center gap-4">
-                  {isLoading ? <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <>Authorize Uplink <ShieldCheck size={18} /></>}
-                </button>
-              </form>
-            </motion.div>
-          )}
-
-          {view === 'patient_dashboard' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl w-full p-12 bg-slate-950/80 border border-white/5 backdrop-blur-3xl rounded-[3rem] shadow-4xl shadow-black/50">
-              <button onClick={() => setView('patient_login')} className="flex items-center gap-2 text-teal-500 text-[10px] font-black uppercase tracking-widest mb-10">
-                <ArrowLeft size={16} /> Exit Archive
-              </button>
-              <div className="flex items-center gap-8 mb-16">
-                <div className="h-14 w-14 bg-teal-600 rounded-2xl flex items-center justify-center text-white"><User size={28} /></div>
-                <div>
-                  <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">{patient?.name}</h2>
-                  <span className="text-[10px] font-black text-teal-400 uppercase tracking-[0.4em]">{patient?.nic}</span>
+                {/* INFRASTRUCTURE FOOTER */}
+                <div className="mt-8 grid grid-cols-3 gap-4">
+                    {[
+                        { icon: Activity, label: 'TELEMETRY', status: 'LIVE' },
+                        { icon: Database, label: 'DATABASE', status: 'SECURED' },
+                        { icon: Network, label: 'STATION', status: 'NODE-01' }
+                    ].map((item, i) => (
+                        <div key={i} className="text-center">
+                            <item.icon className="mx-auto mb-1 text-slate-700" size={16} />
+                            <div className="text-[8px] font-black text-slate-600/60 tracking-widest uppercase">{item.label}</div>
+                            <div className="text-[9px] font-black text-teal-950 tracking-tighter uppercase">{item.status}</div>
+                        </div>
+                    ))}
                 </div>
-              </div>
-              <div className="space-y-4">
-                {results.map(res => (
-                  <div key={res.id} className="flex justify-between items-center p-8 bg-white/5 rounded-[2rem] border border-white/5 hover:bg-white/10 transition-all group">
-                    <div>
-                      <p className="text-xl font-black text-white italic uppercase tracking-tight">{res.test_name}</p>
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Sample Time: {new Date(res.timestamp).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-black text-white font-mono tracking-tighter">{res.test_value} <span className="text-xs italic text-teal-500">{res.unit}</span></p>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
+
+            {/* STATIC HUD ELEMENTS */}
+            <div className="absolute top-8 left-8 flex items-center gap-2">
+                <div className="status-dot-active" />
+                <span className="text-[9px] font-black tracking-widest text-slate-700 uppercase">System Ready</span>
+            </div>
+
+            <div className="absolute bottom-8 right-8 flex items-center gap-6 opacity-30 grayscale pointer-events-none">
+                <img src="https://img.icons8.com/color/48/supabase.png" alt="Supabase" className="h-4" />
+                <FlaskConical size={18} className="text-slate-500" />
+            </div>
+        </div>
+    );
 };
 
 export default App;

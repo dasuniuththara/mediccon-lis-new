@@ -53,6 +53,15 @@ const SystemRepo = {
         }
     },
 
+    getFacilityId: () => {
+        try {
+            const row = db.prepare("SELECT value FROM system_settings WHERE key = 'facility_id'").get();
+            return row ? row.value : 'NODE-UNNAMED';
+        } catch (e) {
+            return 'NODE-UNKNOWN';
+        }
+    },
+
     // --- SYSTEM SETTINGS (LAB PROFILE) ---
     getSettings: () => {
         try {

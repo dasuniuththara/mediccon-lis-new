@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Cpu,
   Plus,
@@ -14,7 +14,12 @@ import {
   Lock,
   Settings2,
   RefreshCw,
-  ArrowRight
+  ArrowRight,
+  Network,
+  Terminal,
+  Server,
+  RadioReceiver,
+  Activity as ActivityIcon
 } from 'lucide-react';
 import { useGlobalStore } from '../store/globalStore';
 import useMachineStatus from '../hooks/useMachineStatus';
@@ -30,8 +35,7 @@ const MachineHub = () => {
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState(machineSearch || '');
 
-  // Sync from global store on mount; clear on unmount to prevent stale data
-  React.useEffect(() => {
+  useEffect(() => {
     if (machineSearch) {
       setSearchTerm(machineSearch);
     }
@@ -41,7 +45,6 @@ const MachineHub = () => {
   const isDeveloper = user && ['developer', 'master access', 'admin'].includes(user.role?.toLowerCase());
   const categories = ['All', 'Biochemistry', 'Hematology', 'Electrolyte', 'Hormone'];
 
-  // Filter machines based on authority
   const allMachinesList = Object.values(machines || {}).filter(m => {
     if (isDeveloper) return true;
     const authStr = user?.authorized_machines || '';
@@ -93,96 +96,76 @@ const MachineHub = () => {
   };
 
   return (
-    <div className="p-8 space-y-10 animate-in fade-in duration-1000 pb-32">
-
-      {/* 1. Page Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10 bg-white/40 p-10 rounded-[2.5rem] border border-white shadow-sm backdrop-blur-xl group">
-        <div className="flex items-center gap-8 relative z-10 w-full">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={navigateBack}
-              className="h-12 w-12 bg-white border border-slate-100 text-slate-600 rounded-xl flex items-center justify-center hover:bg-slate-950 hover:text-white transition-all shadow-sm active:scale-95 shrink-0"
-            >
-              <ArrowRight size={20} className="rotate-180" />
-            </button>
-            <button
-              onClick={navigateNext}
-              className="h-12 w-12 bg-white border border-slate-100 text-slate-600 rounded-xl flex items-center justify-center hover:bg-slate-950 hover:text-white transition-all shadow-sm active:scale-95 shrink-0"
-            >
-              <ArrowRight size={20} />
-            </button>
-          </div>
-
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 flex-1">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="h-1.5 w-1.5 rounded-full bg-teal-600 animate-pulse shadow-[0_0_8px_rgba(20,184,166,0.6)]"></div>
-                <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.4em]">Hardware Infrastructure Layer</span>
-              </div>
-              <h1 className="text-6xl font-black text-slate-900 tracking-tighter leading-none flex items-center gap-4">
-                Analyzer Hub
-                <div className="h-12 w-px bg-slate-200/50"></div>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600 uppercase">
-                  Active Fleet
-                </span>
-              </h1>
-            </div>
-
-            <div className="flex bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/50 w-fit backdrop-blur-md">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setFilter(cat)}
-                  className={`px-8 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${filter === cat ? 'bg-white text-teal-600 shadow-xl border border-slate-100' : 'text-slate-600 hover:text-slate-800'}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
+    <div className="p-8 space-y-10 animate-in fade-in duration-700 pb-32">
+      {/* 1. Page Header: Deep Neon Ingress */}
+      <div className="bg-slate-900 border border-white/5 rounded-[3.5rem] p-12 relative overflow-hidden group shadow-2xl">
+        <div className="absolute top-0 right-0 p-12 opacity-5 translate-x-12 -translate-y-12 rotate-45 group-hover:scale-110 transition-all duration-1000">
+          <Cpu size={400} />
         </div>
 
-        <div className="flex flex-wrap gap-4 relative z-10">
-          <button
-            onClick={() => refresh()}
-            className="h-14 px-8 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center gap-3 shadow-xl group/sync"
-          >
-            <RefreshCw size={16} className="group-hover/sync:rotate-180 transition-transform duration-700" />
-            Synchronize Fleet
-          </button>
+        <div className="relative z-10 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-12">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse shadow-[0_0_12px_#14b8a6]"></div>
+              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-teal-400">Hardware Infrastructure Layer</span>
+            </div>
+            <h1 className="text-7xl font-black text-white leading-none tracking-tighter uppercase italic">
+              Analyzer <span className="text-teal-500">Hub</span>
+            </h1>
+            <p className="text-slate-400 max-w-xl text-lg font-medium leading-relaxed">
+              Managing the global fleet of synchronized diagnostic analyzers and protocol interfaces.
+            </p>
+          </div>
+
+          <div className="flex bg-black/40 p-3 rounded-[2.5rem] border border-white/5 backdrop-blur-3xl">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilter(cat)}
+                className={`px-8 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all ${filter === cat ? 'bg-teal-600 text-white shadow-2xl' : 'text-slate-500 hover:text-white'}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* 2. Global Fleet Telemetry */}
+      {/* 2. Global Fleet Telemetry Matrix */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
-        <StatusPod label="Total Node Fleet" value={allMachinesList.length} sub="Nodes" icon={<Cpu size={24} />} color="teal" description="Total registered analyzer units" />
-        <StatusPod label="Operational Nodes" value={allMachinesList.filter(m => m.status === 'Online').length} sub="Synchronized" icon={<Zap size={24} />} color="emerald" description="Analyzers active in the stream" />
-        <StatusPod label="System Faults" value={allMachinesList.filter(m => m.status === 'Error').length} sub="Critical" icon={<AlertTriangle size={24} />} color="rose" description="Nodes requiring immediate review" />
-        <StatusPod label="Data Mapping" value={allMachinesList.reduce((acc, m) => acc + (m.mapping_count || 0), 0)} sub="Tests" icon={<Database size={24} />} color="cyan" description="Aggregated clinical parameters" />
+        <StatusPod label="Total Node Fleet" value={allMachinesList.length} sub="Nodes" icon={<Cpu size={24} />} color="teal" description="Total registered units" />
+        <StatusPod label="Operational Nodes" value={allMachinesList.filter(m => m.status === 'Online').length} sub="Synchronized" icon={<Zap size={24} />} color="emerald" description="Modules active in stream" />
+        <StatusPod label="System Faults" value={allMachinesList.filter(m => m.status === 'Error').length} sub="Critical" icon={<AlertTriangle size={24} />} color="rose" description="Nodes requiring review" />
+        <StatusPod label="Data Mapping" value={allMachinesList.reduce((acc, m) => acc + (m.mapping_count || 0), 0)} sub="Tests" icon={<Database size={24} />} color="indigo" description="Clinical parameters" />
       </div>
 
-      {/* 3. Search & Control Matrix */}
-      <div className="flex flex-col md:flex-row gap-6 bg-white/40 p-8 rounded-[2.5rem] border border-white shadow-sm backdrop-blur-md">
+      {/* 3. Search & Control Matrix Grid */}
+      <div className="flex flex-col md:flex-row gap-6 bg-slate-900 border border-white/5 p-8 rounded-[3rem] shadow-2xl">
         <div className="relative flex-1 group">
-          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-teal-600 transition-colors" size={20} />
+          <Search className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-teal-400 transition-colors" size={24} />
           <input
             type="text"
             placeholder="Probe Hardware Node Registry..."
-            className="w-full bg-white/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-6 text-[13px] font-black text-slate-800 focus:bg-white focus:ring-8 focus:ring-teal-500/5 focus:border-teal-500/30 transition-all placeholder:text-slate-600 outline-none"
+            className="w-full bg-slate-950 border border-white/10 rounded-[2rem] py-6 pl-20 pr-8 text-[14px] font-black text-white focus:ring-[12px] focus:ring-teal-500/5 focus:border-teal-500/30 transition-all placeholder:text-slate-800 outline-none uppercase tracking-widest"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
+        <button
+          onClick={() => refresh()}
+          className="h-20 px-12 bg-teal-600 text-white rounded-[2rem] font-black text-[12px] uppercase tracking-[0.4em] hover:bg-teal-500 transition-all flex items-center gap-4 shadow-2xl active:scale-95 group"
+        >
+          <RefreshCw size={24} className="group-hover:rotate-180 transition-transform duration-1000" />
+          Synchronize Fleet
+        </button>
       </div>
 
-      {/* 4. Hardware Node Grid */}
+      {/* 4. Hardware Node Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-10">
         {filteredMachines.length === 0 ? (
-          <div className="col-span-full py-40 text-center">
-            <div className="h-24 w-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-slate-100 shadow-sm text-slate-600">
-              <Radio size={48} className="animate-pulse" />
-            </div>
-            <p className="font-black text-slate-600 uppercase tracking-[0.4em] text-[11px]">No Hardware Nodes Discovered</p>
+          <div className="col-span-full py-40 text-center opacity-20">
+            <Radio size={80} className="mx-auto mb-8 animate-pulse" />
+            <p className="font-black text-white uppercase tracking-[0.6em] text-[14px]">No Hardware Nodes Discovered</p>
           </div>
         ) : filteredMachines.map(m => (
           <MachineCard
@@ -196,15 +179,14 @@ const MachineHub = () => {
         {isDeveloper && (
           <button
             onClick={handleAddNew}
-            className="group h-[500px] border-4 border-dashed border-slate-200 rounded-[3rem] flex flex-col items-center justify-center gap-6 hover:border-teal-500/30 hover:bg-teal-50/20 transition-all duration-700 relative overflow-hidden"
+            className="group h-[500px] border-4 border-dashed border-white/5 bg-white/5 rounded-[3.5rem] flex flex-col items-center justify-center gap-8 hover:border-teal-500/30 hover:bg-teal-500/5 transition-all duration-700 relative overflow-hidden"
           >
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] group-hover:opacity-[0.05] transition-opacity"></div>
-            <div className="h-24 w-24 bg-white border border-slate-200 text-slate-600 rounded-[2rem] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:text-teal-600 group-hover:border-teal-100 group-hover:rotate-90 transition-all duration-700">
-              <Plus size={48} />
+            <div className="h-24 w-24 bg-slate-900 border border-white/10 text-slate-500 rounded-[2.5rem] flex items-center justify-center shadow-2xl group-hover:scale-110 group-hover:text-teal-400 group-hover:border-teal-500 group-hover:rotate-90 transition-all duration-700">
+              <Plus size={52} />
             </div>
-            <div className="text-center space-y-2">
-              <span className="text-[12px] font-black text-slate-600 uppercase tracking-[0.4em] group-hover:text-teal-600 transition-colors">Initialize Fresh Node</span>
-              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Deploy Hardware Interface</p>
+            <div className="text-center space-y-3">
+              <span className="text-[14px] font-black text-slate-500 uppercase tracking-[0.5em] group-hover:text-teal-400 transition-colors leading-none">Initialize Fresh Node</span>
+              <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Deploy Hardware Interface</p>
             </div>
           </button>
         )}
@@ -227,41 +209,30 @@ const MachineHub = () => {
   );
 };
 
-/* --- ENHANCED SUB-COMPONENTS --- */
 const StatusPod = ({ label, value, sub, icon, color, description }) => {
   const themes = {
-    teal: 'text-teal-600 bg-teal-50 border-teal-100 shadow-teal-100/50',
-    emerald: 'text-emerald-600 bg-emerald-50 border-emerald-100 shadow-emerald-100/50',
-    rose: 'text-rose-600 bg-rose-50 border-rose-100 shadow-rose-100/50',
-    cyan: 'text-cyan-600 bg-cyan-50 border-cyan-100 shadow-cyan-100/50'
+    teal: 'text-teal-400 bg-teal-400/10 border-teal-500/20',
+    emerald: 'text-emerald-400 bg-emerald-400/10 border-emerald-500/20',
+    rose: 'text-rose-400 bg-rose-400/10 border-rose-500/20',
+    indigo: 'text-indigo-400 bg-indigo-400/10 border-indigo-500/20'
   };
 
   return (
-    <div className="bg-white/60 rounded-[2.5rem] p-8 border border-white shadow-sm transition-all duration-700 group hover:shadow-[0_40px_100px_rgba(0,0,0,0.06)] hover:-translate-y-1 relative overflow-hidden backdrop-blur-xl">
-      <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 group-hover:rotate-12 transition-transform duration-1000">
-        {React.cloneElement(icon, { size: 140 })}
+    <div className="bg-slate-900 border border-white/5 rounded-[3rem] p-10 relative overflow-hidden group hover:border-white/10 transition-all">
+      <div className={`p-5 rounded-2xl ${themes[color]} w-fit mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-700`}>
+        {icon}
       </div>
-
-      <div className="flex items-center gap-6 relative z-10">
-        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center border shadow-inner group-hover:scale-110 transition-transform duration-700 ${themes[color]}`}>
-          {React.cloneElement(icon, { size: 28 })}
-        </div>
-        <div className="space-y-1">
-          <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] font-mono">{label}</p>
-          <div className="flex items-baseline gap-3">
-            <span className="text-4xl font-black text-slate-900 tracking-tighter tabular-nums leading-none font-mono">
-              {value}
-            </span>
-            {sub && <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{sub}</span>}
-          </div>
+      <div className="space-y-2 relative z-10">
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{label}</p>
+        <div className="flex items-baseline gap-4">
+          <span className="text-5xl font-black text-white tracking-tighter tabular-nums leading-none italic uppercase">{value}</span>
+          <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{sub}</span>
         </div>
       </div>
-      {description && (
-        <div className="mt-6 pt-6 border-t border-slate-100/50 flex items-center gap-2">
-          <div className={`h-1.5 w-1.5 rounded-full ${themes[color].split(' ')[0].replace('text-', 'bg-')}`}></div>
-          <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest opacity-80">{description}</span>
-        </div>
-      )}
+      <div className="mt-8 pt-6 border-t border-white/5 flex items-center gap-3">
+        <div className={`h-2 w-2 rounded-full ${themes[color].split(' ')[0].replace('text-', 'bg-')} shadow-[0_0_8px] shadow-current`}></div>
+        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest opacity-80 italic">{description}</span>
+      </div>
     </div>
   );
 };

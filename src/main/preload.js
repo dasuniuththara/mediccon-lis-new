@@ -55,6 +55,7 @@ const api = {
 
     // --- MACHINES ---
     getMachines: (userData) => ipcRenderer.invoke('get-machines', userData),
+    getFacilityId: () => ipcRenderer.invoke('get-facility-id'),
     getMachineConfig: (machineId) => ipcRenderer.invoke('get-machine-config', machineId),
     saveMachineConfig: (config) => ipcRenderer.invoke('save-machine-config', config),
     // --- Inventory System ---

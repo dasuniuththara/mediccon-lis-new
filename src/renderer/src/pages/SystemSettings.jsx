@@ -57,6 +57,21 @@ const SystemSettings = () => {
     const { user, navigateNext, navigateBack, setActivePage, loadLabProfile: refreshGlobalProfile } = useGlobalStore();
     const isDeveloper = user && ['developer', 'master access', 'admin'].includes(user.role?.toLowerCase());
     const [activeTab, setActiveTab] = useState(isDeveloper ? 'profile' : 'subscription'); // Default based on role
+    const [localIp, setLocalIp] = useState('');
+
+    useEffect(() => {
+        try {
+            const os = require('os');
+            const nets = os.networkInterfaces();
+            for (const name of Object.keys(nets)) {
+                for (const net of nets[name]) {
+                    if (net.family === 'IPv4' && !net.internal) {
+                        setLocalIp(net.address);
+                    }
+                }
+            }
+        } catch (e) { }
+    }, []);
     const [labInfo, setLabInfo] = useState({
         name: 'Mediccon Clinical Network',
         tagline: 'Advanced Clinical Diagnostics',
@@ -204,7 +219,7 @@ const SystemSettings = () => {
     };
 
     const loadMachines = async () => {
-        const data = await window.api.getMachines();
+        const data = await window.api.getMachines(user);
         setMachines(data || []);
     };
 
@@ -458,6 +473,7 @@ const SystemSettings = () => {
                         <>
                             <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={<Users size={16} />} label="Identity Matrix" />
                             <TabButton active={activeTab === 'catalog'} onClick={() => setActiveTab('catalog')} icon={<Table size={16} />} label="Clinical Catalog" />
+                            <TabButton active={activeTab === 'server'} onClick={() => setActiveTab('server')} icon={<Server size={16} />} label="Network Server" />
                             <TabButton active={activeTab === 'comm'} onClick={() => setActiveTab('comm')} icon={<MessagesSquare size={16} />} label="Communications" />
                             <TabButton active={activeTab === 'data'} onClick={() => setActiveTab('data')} icon={<DatabaseZap size={16} />} label="Node Security" />
                         </>
@@ -764,7 +780,59 @@ const SystemSettings = () => {
                         </div>
                     )}
 
-                    {/* E. NEURAL COMMUNICATIONS HUB */}
+                    {/* D. NETWORK SERVER TERMINAL */}
+                    {activeTab === 'server' && isDeveloper && (
+                        <div className="bg-white/60 rounded-[3.5rem] border border-white shadow-sm backdrop-blur-xl p-12 space-y-12 animate-in slide-in-from-right-8 duration-700 relative overflow-hidden">
+                            <div className="absolute -top-10 -right-10 opacity-[0.02] rotate-12 pointer-events-none">
+                                <Server size={350} />
+                            </div>
+
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
+                                <div className="space-y-1">
+                                    <h2 className="text-[10px] font-black text-teal-600 uppercase tracking-[0.4em] mb-2 block">LAN Controller</h2>
+                                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">Sub-Machine Link</h3>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-12 relative z-10">
+                                <div className="bg-slate-900 rounded-[2.5rem] p-10 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-1000">
+                                        <Network size={120} />
+                                    </div>
+                                    <div className="relative z-10 space-y-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-4 w-4 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_15px_#10b981]"></div>
+                                            <h4 className="text-xl font-black text-white uppercase tracking-tight">Main Server Active</h4>
+                                        </div>
+                                        <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-2xl">
+                                            This machine is acting as the MAIN Central Database. The internal API server is running successfully on port <strong className="text-white">8080</strong>.<br /><br />
+                                            To connect other "Sub LIS machines" to this main server, open Mediccon LIS on the sub machine, and enter this exact Server IP Address into their Network Settings.
+                                        </p>
+                                        <div className="mt-8">
+                                            <label className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em] block mb-2">Main Server IP Address</label>
+                                            <div className="inline-flex bg-black/40 border border-white/10 rounded-2xl p-6 px-10 copy-container hover:bg-black/60 transition-colors cursor-text selection:bg-teal-500/30">
+                                                <span className="text-4xl font-black font-mono tracking-tighter text-teal-100 uppercase">{localIp || '127.0.0.1'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-teal-50/50 rounded-[2.5rem] border border-teal-100/50 p-8 flex items-start gap-6 relative overflow-hidden group/notice">
+                                    <div className="h-14 w-14 bg-teal-600 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-teal-100 group-hover/notice:scale-110 transition-transform duration-500">
+                                        <InfoIcon size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-teal-900 uppercase tracking-tight">Network Firewall Warning</h4>
+                                        <p className="text-[12px] text-teal-700/70 font-bold leading-relaxed mt-2 uppercase tracking-wide">
+                                            Ensure Windows Defender Firewall allows incoming connections on port 8080. If sub-machines cannot connect, add an Inbound Rule in Windows Firewall to allow TCP/UDP port 8080 for Mediccon LIS Server.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* e. NEURAL COMMUNICATIONS HUB */}
                     {activeTab === 'comm' && (
                         <div className="bg-white/60 rounded-[3.5rem] border border-white shadow-sm backdrop-blur-xl p-12 space-y-12 animate-in slide-in-from-right-8 duration-700 relative overflow-hidden">
                             <div className="absolute -top-10 -right-10 opacity-[0.02] rotate-12 pointer-events-none">

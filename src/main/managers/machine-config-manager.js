@@ -23,45 +23,44 @@ class MachineConfigManager {
             ethernet: {}
         };
         this.hl7Server = null;
-        this.watchdogTimer = null;
-        this.startMiddlewareWatchdog();
+        this.recoveryStates = {}; // Per-machine recovery flags
     }
 
     /**
      * Middleware Watchdog Engine
-     * Runs every 1 second to pulse "Online" analyzers and auto-recover dropped links.
+     * Pulse and auto-recover dropped links without resetting the entire hub.
      */
     startMiddlewareWatchdog() {
         if (this.watchdogTimer) clearInterval(this.watchdogTimer);
 
         this.watchdogTimer = setInterval(async () => {
             const machines = this.getAllMachines();
-            const onlineMachines = machines.filter(m => m.status === 'Online');
+            const onlineMachines = machines.filter(m => m.status === 'Online' || m.status === 'Error');
 
             for (const machine of onlineMachines) {
                 try {
                     const driver = this.activeConnections.serial[machine.id] || this.activeConnections.ethernet[machine.id];
 
                     if (driver) {
-                        // 1. Persistent Connection Recovery
+                        // 1. Machine-Specific Recovery Logic
                         if (typeof driver.isConnected === 'function' && !driver.isConnected()) {
-                            // Guard: Only initialize if not already in a recovery cycle
-                            if (!this.isRecovering) {
-                                this.isRecovering = true;
-                                console.log(`[Middleware] Detected broken link for ${machine.name}. Reconnecting...`);
-                                this.initializeConnections().finally(() => {
-                                    setTimeout(() => { this.isRecovering = false; }, 60000);
-                                });
+                            if (!this.recoveryStates[machine.id]) {
+                                this.recoveryStates[machine.id] = true;
+                                console.log(`[Middleware] Broken link for ${machine.name}. Re-Initializing...`);
+
+                                // Only restart THIS machine, not the whole hub
+                                await this.connectMachine(machine);
+
+                                // Cool-down: Don't try to recover this machine again for 2 minutes to prevent loop spam
+                                setTimeout(() => { this.recoveryStates[machine.id] = false; }, 120000);
                             }
-                            break;
+                            continue;
                         }
 
-                        // 2. Heartbeat Protocol Pulse (Every 1s as requested by user)
-                        // This keeps the line active and verifies analyzer readiness
+                        // 2. Heartbeat Protocol Pulse (Every 10s now)
                         if (typeof driver.sendHeartbeat === 'function') {
                             driver.sendHeartbeat();
                         } else if (machine.connection_type === 'Serial' && driver.port && driver.port.isOpen) {
-                            // Standard ASTM heartbeat: <ENQ> (0x05)
                             driver.port.write(Buffer.from([0x05]));
                         }
                     }
@@ -69,7 +68,7 @@ class MachineConfigManager {
                     console.error(`[Middleware Watchdog] Pulse failure for ${machine.name}:`, e.message);
                 }
             }
-        }, 1000);
+        }, 10000); // Pulse every 10 seconds (standard for clinical environments)
     }
 
     /**
@@ -235,136 +234,107 @@ class MachineConfigManager {
     async initializeConnections() {
         console.log('[MachineConfig] Initializing all machine connections...');
 
-        // --- SUBSCRIPTION GATEKEEPING ---
-        const settings = {};
-        try {
-            const rows = db.prepare('SELECT * FROM system_settings').all();
-            rows.forEach(r => settings[r.key] = r.value);
-        } catch (e) { }
-
-        const plan = settings.sub_plan || 'STANDARD';
-        const isExpired = false;
-
-        let limit = 999; // Removed Gatekeeper limit for developer build
-
-        console.log(`[Gatekeeper] Plan: ${plan} | Limit: ${limit} | Status: ${isExpired ? 'EXPIRED' : 'ACTIVE'}`);
-
         const machines = this.getAllMachines();
 
-        // Filter for Serial machines
-        const serialMachines = machines.filter(m => m.connection_type === 'Serial');
-
-        let connectedCount = 0;
-        for (const machine of serialMachines) {
-            if (machine.com_port) {
-                try {
-                    // 1. Disconnect existing if any
-                    if (this.activeConnections.serial[machine.id]) {
-                        this.activeConnections.serial[machine.id].disconnect();
-                        delete this.activeConnections.serial[machine.id];
-                    }
-
-                    // --- GATEKEEPER CHECK ---
-                    if (isExpired) {
-                        console.warn(`[Gatekeeper] Connection blocked for ${machine.name}: License Expired`);
-                        db.prepare("UPDATE machines SET status = 'Blocked (Expired)' WHERE id = ?").run(machine.id);
-                        continue;
-                    }
-
-                    if (connectedCount >= limit) {
-                        console.warn(`[Gatekeeper] Connection blocked for ${machine.name}: Plan limit reached (${limit})`);
-                        db.prepare("UPDATE machines SET status = 'Blocked (Plan Limit)' WHERE id = ?").run(machine.id);
-                        continue;
-                    }
-
-                    // 1. Setup Logger
-                    if (!this.activeConnections.loggers[machine.id]) {
-                        this.activeConnections.loggers[machine.id] = new MachineLogger(machine.id);
-                    }
-                    const logger = this.activeConnections.loggers[machine.id];
-
-                    // 2. Connect based on type
-                    let driver;
-                    if (machine.type === 'LIS2-A' || (machine.name && machine.name.includes('Selectra'))) {
-                        driver = new LIS2ADriver();
-                        await driver.connect(machine.com_port, machine.baud_rate || 9600, (res) => this.handleLIS2AData(machine, res), logger);
-                    } else if (machine.type === 'Mispa Count X') {
-                        driver = new MispaDriver();
-                        await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handleMispaData(machine, data), logger);
-                    } else if (machine.type === 'Mispa Count') {
-                        driver = new MispaCountDriver();
-                        await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handleMispaData(machine, data), logger);
-                    } else if (machine.type?.startsWith('PKL') || (machine.name && machine.name?.includes('PKL'))) {
-                        driver = new PKLDriver();
-                        await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handlePKLData(machine, data), (q) => this.handlePKLQuery(q, machine), logger);
-                    } else if (machine.type?.includes('DIALAB')) {
-                        driver = new DialabDriver();
-                        await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handleMispaData(machine, data), logger);
-                    } else if (machine.type?.includes('STATLYTE')) {
-                        driver = new StatlyteDriver();
-                        await driver.connect(machine.com_port, (data) => this.handleMispaData(machine, data), logger);
-                    } else {
-                        // Standard ASTM/Serial Driver
-                        driver = new SerialDriver();
-                        driver.connect(machine.com_port, machine.baud_rate || 9600, (rawData) => this.handleSerialData(machine, rawData), () => {
-                            db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
-                            if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
-                        }, logger);
-                    }
-
-                    // Save instance
-                    this.activeConnections.serial[machine.id] = driver;
-                    connectedCount++;
-
-                    // Update Status in DB
-                    db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
-                    if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
-
-                } catch (err) {
-                    console.error(`[MachineConfig] Failed to connect ${machine.name}:`, err);
-                    db.prepare("UPDATE machines SET status = 'Error' WHERE id = ?").run(machine.id);
-                }
-            }
+        for (const machine of machines) {
+            await this.connectMachine(machine);
         }
+    }
 
-        // 2. Handle Ethernet/HL7 logic
-        // If there's an HL7 server needed. Usually HL7 listener is global on a port.
-        // We can check if any machine needs HL7 and on which port.
-        // If multiple ports are specified, we'd need multiple servers. 
-        // For simple HL7, usually one port (e.g. 5000 or 8080) receives all.
-        // I'll check if any machine specifies a port for *incoming* HL7.
-        const ethernetMachines = machines.filter(m => m.connection_type === 'Ethernet');
-
-        // Disconnect existing Ethernet/TCP drivers before initializing (to free up ports)
-        Object.keys(this.activeConnections.ethernet).forEach(key => {
-            if (this.activeConnections.ethernet[key] && typeof this.activeConnections.ethernet[key].stopServer === 'function') {
-                this.activeConnections.ethernet[key].stopServer();
-            }
-            delete this.activeConnections.ethernet[key];
-        });
-
-        for (const machine of ethernetMachines) {
-            if (isExpired || connectedCount >= limit) {
-                console.warn(`[Gatekeeper] Ethernet blocked for ${machine.name}`);
-                db.prepare("UPDATE machines SET status = 'Blocked' WHERE id = ?").run(machine.id);
-                continue;
-            }
-
-            if (!this.activeConnections.loggers[machine.id]) {
-                this.activeConnections.loggers[machine.id] = new MachineLogger(machine.id);
-            }
-            const logger = this.activeConnections.loggers[machine.id];
-
+    /**
+     * Individual Machine Connection Logic
+     * Ensures one analyzer's failure doesn't crash the entire network stack.
+     */
+    async connectMachine(machine) {
+        if (machine.connection_type === 'Serial' && machine.com_port) {
             try {
+                // 1. Disconnect existing if any
+                if (this.activeConnections.serial[machine.id]) {
+                    this.activeConnections.serial[machine.id].disconnect();
+                    delete this.activeConnections.serial[machine.id];
+                }
+
+                // 2. Setup Logger
+                if (!this.activeConnections.loggers[machine.id]) {
+                    this.activeConnections.loggers[machine.id] = new MachineLogger(machine.id);
+                }
+                const logger = this.activeConnections.loggers[machine.id];
+
+                // 3. Connect based on type
+                let driver;
+                if (machine.type === 'LIS2-A' || (machine.name && machine.name.includes('Selectra'))) {
+                    driver = new LIS2ADriver();
+                    await driver.connect(machine.com_port, machine.baud_rate || 9600, (res) => this.handleLIS2AData(machine, res), logger);
+                } else if (machine.type === 'Mispa Count X') {
+                    driver = new MispaDriver();
+                    await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handleMispaData(machine, data), logger);
+                } else if (machine.type === 'Mispa Count') {
+                    driver = new MispaCountDriver();
+                    await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handleMispaData(machine, data), logger);
+                } else if (machine.type?.startsWith('PKL') || (machine.name && machine.name?.includes('PKL'))) {
+                    driver = new PKLDriver();
+                    await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handlePKLData(machine, data), (q) => this.handlePKLQuery(q, machine), logger);
+                } else if (machine.type?.includes('DIALAB')) {
+                    driver = new DialabDriver();
+                    await driver.connect(machine.com_port, machine.baud_rate || 9600, (data) => this.handleMispaData(machine, data), logger);
+                } else if (machine.type?.includes('STATLYTE')) {
+                    driver = new StatlyteDriver();
+                    await driver.connect(machine.com_port, (data) => this.handleMispaData(machine, data), logger);
+                } else {
+                    // Standard ASTM/Serial Driver
+                    driver = new SerialDriver();
+                    driver.connect(machine.com_port, machine.baud_rate || 9600, (rawData) => this.handleSerialData(machine, rawData), () => {
+                        db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
+                        if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
+                    }, logger);
+                }
+
+                // Save instance
+                this.activeConnections.serial[machine.id] = driver;
+
+                // Update Status in DB
+                db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
+                if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
+
+            } catch (err) {
+                console.error(`[MachineConfig] Port Error for ${machine.name}: ${err.message}`);
+
+                // --- AUTO-PATHFINDER FALLBACK ---
+                if (err.message.includes('not found') || err.message.includes('opening')) {
+                    try {
+                        const { SerialPort } = require('serialport');
+                        const ports = await SerialPort.list();
+                        const available = ports.find(p => p.path.startsWith('COM') && p.path !== machine.com_port);
+                        if (available) {
+                            console.log(`[MachineConfig] 🔄 Path-Finder: Redirecting ${machine.name} to ${available.path}`);
+                            machine.com_port = available.path;
+                            // Recursive retry ONLY ONCE via connectMachine
+                            return this.connectMachine(machine);
+                        }
+                    } catch (scanErr) { }
+                }
+
+                db.prepare("UPDATE machines SET status = 'Error' WHERE id = ?").run(machine.id);
+            }
+        } else if (machine.connection_type === 'Ethernet') {
+            try {
+                // Disconnect existing Ethernet/TCP drivers
+                if (this.activeConnections.ethernet[machine.id] && typeof this.activeConnections.ethernet[machine.id].stopServer === 'function') {
+                    this.activeConnections.ethernet[machine.id].stopServer();
+                }
+                delete this.activeConnections.ethernet[machine.id];
+
+                if (!this.activeConnections.loggers[machine.id]) {
+                    this.activeConnections.loggers[machine.id] = new MachineLogger(machine.id);
+                }
+                const logger = this.activeConnections.loggers[machine.id];
+
                 if (machine.type === 'MS-480' || (machine.name && machine.name.includes('480'))) {
                     MS480Driver.startServer(machine.port || 5000, (result) => this.handleMS480Data(machine, result), logger);
                     this.activeConnections.ethernet[machine.id] = MS480Driver;
-                    connectedCount++;
                     db.prepare("UPDATE machines SET status = 'Online' WHERE id = ?").run(machine.id);
                     if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.webContents.send('refresh-machines');
                 }
-                // (Future HL7 listeners can be added here)
-
             } catch (err) {
                 console.error(`[MachineConfig] Failed to start server for ${machine.name}:`, err);
                 db.prepare("UPDATE machines SET status = 'Error' WHERE id = ?").run(machine.id);
@@ -594,6 +564,12 @@ class MachineConfigManager {
             const stmt = db.prepare('SELECT lis_name FROM test_mappings WHERE machine_id = ? AND machine_code = ?');
             const mapping = stmt.get(machineId, machineCode);
             if (mapping) return mapping.lis_name;
+
+            // 1b. REVERSE LOOKUP: If the driver sent the human-readable name instead of the
+            // numeric code (e.g. "WBC" instead of "9"), check if machineCode matches a lis_name
+            const reverseStmt = db.prepare('SELECT lis_name FROM test_mappings WHERE machine_id = ? AND lis_name = ?');
+            const reverseMapping = reverseStmt.get(machineId, machineCode);
+            if (reverseMapping) return reverseMapping.lis_name;
 
             // 2. Fetch machine metadata for category check
             const machine = this.getMachine(machineId);

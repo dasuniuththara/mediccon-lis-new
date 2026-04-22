@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Microscope, Activity, ShieldCheck, ArrowRight, Lock, User, Zap, ChevronRight, Fingerprint, Network } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Microscope, Activity, ShieldCheck, ArrowRight, Lock, User, Zap, ChevronRight, Fingerprint, Network, Server } from 'lucide-react';
 import { useGlobalStore } from '../store/globalStore';
 import { playVoiceAlert } from '../utils/voiceSynth';
 
@@ -13,6 +13,15 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [nodeId, setNodeId] = useState('FETCHING...');
+
+    useEffect(() => {
+        const fetchId = async () => {
+            const id = await window.api.getFacilityId();
+            setNodeId(id || 'OFFLINE');
+        };
+        fetchId();
+    }, []);
 
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
@@ -80,8 +89,8 @@ const Login = () => {
 
                     <div className="mt-16 space-y-5 relative z-10">
                         <StatusBadge icon={<Fingerprint size={20} className="text-teal-400" />} label="Identity Probe" value="Biometric Link Armed" />
-                        <StatusBadge icon={<Network size={20} className="text-emerald-500" />} label="Node Fleet" value="12 Nodes Synchronized" />
-                        <StatusBadge icon={<ShieldCheck size={20} className="text-cyan-400" />} label="Firewall State" value="Level 4 Active" />
+                        <StatusBadge icon={<Server size={20} className="text-emerald-500" />} label="Server ID" value={nodeId} />
+                        <StatusBadge icon={<ShieldCheck size={20} className="text-cyan-400" />} label="Grid Sync" value="Secure Protocol Active" />
                     </div>
 
                     {/* Subtle Versioning */}

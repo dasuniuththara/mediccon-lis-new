@@ -411,21 +411,39 @@ const PatientRepo = {
         }
     },
 
-    getMotherUIStats: () => {
+    getMotherUIStats: async () => {
         try {
-            // 1. Global Clinical Throughput (Total results processed ever)
-            const throughput = db.prepare("SELECT COUNT(*) as count FROM results").get().count || 0;
+            // ─── CLOUD HANDSHAKE (Priority) ──────────────────────────────────
+            // Attempt to fetch global perspective from the Vercel Relay
+            let cloudStats = null;
+            try {
+                const relayUrl = 'https://web-app-jet-three.vercel.app/api/stats';
+                const response = await fetch(relayUrl, { signal: AbortSignal.timeout(3000) });
+                if (response.ok) {
+                    const json = await response.json();
+                    cloudStats = json.data;
+                    console.log('[MOTHER-SYNC] Global Intelligence Synchronized.');
+                }
+            } catch (e) {
+                // Silent fail — fallback to local matrix
+            }
 
-            // 2. Global Revenue Stream (Total invoices generated)
-            const revenue = db.prepare("SELECT SUM(total_amount) as total FROM invoices").get().total || 0;
+            // ─── LOCAL MATRIX EXTRACTION ─────────────────────────────────────
+            // 1. Global Clinical Throughput
+            const localThroughput = db.prepare("SELECT COUNT(*) as count FROM results").get().count || 0;
+            const throughput = cloudStats ? (cloudStats.results_today || localThroughput) : localThroughput;
 
-            // 3. AI Diagnostic Validations (Percentage of validated results)
+            // 2. Global Revenue Stream
+            const localRevenue = db.prepare("SELECT SUM(total_amount) as total FROM invoices").get().total || 0;
+            const revenue = cloudStats ? (cloudStats.revenue_today || localRevenue) : localRevenue;
+
+            // 3. AI Diagnostic Validations
             const totalRes = db.prepare("SELECT COUNT(*) as count FROM results").get().count || 0;
             const validatedRes = db.prepare("SELECT COUNT(*) as count FROM results WHERE status = 'VALIDATED'").get().count || 0;
             const panicRes = db.prepare("SELECT COUNT(*) as count FROM results WHERE flag = 'P'").get().count || 0;
             const validationRate = totalRes > 0 ? ((validatedRes / totalRes) * 100).toFixed(1) : "100";
 
-            // 4. Registration Intelligence Trend (Last 7 Days)
+            // 4. Registration Intelligence Trend
             const registrationTrend = db.prepare(`
                 SELECT date(created_at) as day, COUNT(*) as count 
                 FROM patients 
