@@ -38,7 +38,7 @@ const LocalApiServer = require('./utils/local-api-server');
 log('[MATRIX-INIT] >>> SYSTEM BOOT SEQUENCE ACTIVATED <<<');
 dns.setDefaultResultOrder('ipv4first');
 
-dns.lookup('tzosgkrljljlgapzqpv.supabase.co', (err, address) => {
+dns.lookup('tzosgkrljlljlgapzqpv.supabase.co', (err, address) => {
     if (err) log(`[NETWORK-TRACE] DNS FAILURE: ${err.message}`);
     else log(`[NETWORK-TRACE] SIGNAL FOUND: Cloud Node is at ${address}`);
 });

@@ -19,7 +19,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // --- CLOUD MATRIX SYNC ---
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://tzosgkrljljlgapzqpv.supabase.co';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://tzosgkrljlljlgapzqpv.supabase.co';
 const supabaseKey = process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 

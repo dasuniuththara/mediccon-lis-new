@@ -24,7 +24,7 @@ class GhostSyncManager {
     constructor() {
         this.localAuthToken = 'Medi@123';
         this.relayUrl = 'https://web-app-jet-three.vercel.app/api/sync-relay';
-        this.supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://tzosgkrljljlgapzqpv.supabase.co';
+        this.supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://tzosgkrljlljlgapzqpv.supabase.co';
         this.supabaseKey = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_KEY || '';
         this.supabase = null;
 
