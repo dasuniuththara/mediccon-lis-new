@@ -171,14 +171,26 @@ class GhostSyncManager {
                     if (!relaySuccess && this.supabase) {
                         try {
                             const conflictKey = (table === 'patients') ? 'nic' : 'id';
-                            for (let i = 0; i < stampedData.length; i += 500) {
-                                const batch = stampedData.slice(i, i + 500);
-                                const { error } = await this.supabase.from(table).upsert(batch, { onConflict: conflictKey });
+                            for (let i = 0; i < stampedData.length; i += 100) {
+                                const batch = stampedData.slice(i, i + 100);
+                                if (batch.length === 0) continue;
+
+                                let { error } = await this.supabase.from(table).upsert(batch, { onConflict: conflictKey });
+
+                                if (error && (error.message.includes('column') || error.message.includes('not found'))) {
+                                    log(`[VAULT-HEAL] Repairing ${table} schema mismatch...`);
+                                    const colMatch = error.message.match(/column "([^"]+)"/);
+                                    if (colMatch && colMatch[1]) {
+                                        const fixed = batch.map(r => { const nr = { ...r }; delete nr[colMatch[1]]; return nr; });
+                                        const { error: e2 } = await this.supabase.from(table).upsert(fixed, { onConflict: conflictKey });
+                                        error = e2;
+                                    }
+                                }
 
                                 if (error) {
                                     log(`[VAULT-PUSH] REJECTED: ${table} (${error.message})`);
                                 } else {
-                                    log(`[VAULT-PUSH] SUCCESS: ${table}`);
+                                    log(`[VAULT-PUSH] SUCCESS: ${table} (Batch ${Math.floor(i / 100) + 1})`);
                                 }
                             }
                         } catch (supErr) {
