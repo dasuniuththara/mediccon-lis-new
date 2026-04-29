@@ -108,10 +108,16 @@ server.on('error', (e) => {
     }
 });
 
-try {
-    server.listen(8080, () => {
+const startServer = () => {
+    server.listen(8080, '0.0.0.0', () => {
         console.log('[API] ☁️ Local Cloud Matrix Mock active on HTTP port 8080');
+    }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.warn('[API] ⚠️ Port 8080 is busy. Relay is in STANDBY mode.');
+        } else {
+            console.error('[API] ❌ Severe Startup Fault:', err.message);
+        }
     });
-} catch (e) {
-    console.error('[API] ❌ Severe Startup Fault:', e.message);
-}
+};
+
+startServer();
